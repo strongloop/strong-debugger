@@ -1,7 +1,7 @@
 {
   "name": "strong-debugger",
   "version": "0.1.0",
-  "description": "DevTools Remote Debugging Protocol provider for Node.js",
+  "description": "DevTools Remote Debugging Protocol provider for Node.js and io.js",
   "keywords": [
     "StrongLoop",
     "Debugger",
@@ -13,15 +13,20 @@
     "url": "https://github.com/strongloop/strong-debugger"
   },
   "main": "index.js",
+  "gypfile": true,
   "scripts": {
+    "install": "node-gyp rebuild",
     "pretest": "jscs . && jshint .",
-    "test": "tape"
+    "test": "echo Tests are not implemented yet."
   },
   "license": {
     "name": "StrongLoop",
-    "url": "https://github.com/strongloop/strong-debugger/blob/master/LICENSE.md"
+    "url": "https://github.com/strongloop/strong-debugger/blob/master/LICENSE"
   },
-  "dependencies": {},
+  "dependencies": {
+    "bindings": "^1.2.1",
+    "nan": "^1.8.4"
+  },
   "devDependencies": {
     "jscs": "^1.10.0",
     "jshint": "^2.6.0"
