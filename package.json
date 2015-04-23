@@ -1,0 +1,29 @@
+{
+  "name": "strong-debugger",
+  "version": "0.1.0",
+  "description": "DevTools Remote Debugging Protocol provider for Node.js",
+  "keywords": [
+    "StrongLoop",
+    "Debugger",
+    "Chrome Developer Tools",
+    "DevTools"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/strongloop/strong-debugger"
+  },
+  "main": "index.js",
+  "scripts": {
+    "pretest": "jscs . && jshint .",
+    "test": "tape"
+  },
+  "license": {
+    "name": "StrongLoop",
+    "url": "https://github.com/strongloop/strong-debugger/blob/master/LICENSE.md"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "jscs": "^1.10.0",
+    "jshint": "^2.6.0"
+  }
+}
