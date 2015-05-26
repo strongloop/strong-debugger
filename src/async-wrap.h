@@ -14,6 +14,7 @@ class AsyncWrap {
 
     inline AsyncWrap();
     inline UvError Init(uv_loop_t* event_loop, T* target, Callback callback);
+    inline void Unref();
     inline void CloseIfInitialized();
 
     inline void Send();

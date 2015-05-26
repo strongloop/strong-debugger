@@ -30,6 +30,12 @@ UvError AsyncWrap<T>::Init(uv_loop_t* event_loop,
 }
 
 template<class T>
+void AsyncWrap<T>::Unref() {
+  if (!handle_.data) return;
+  uv_unref(reinterpret_cast<uv_handle_t*>(&handle_));
+}
+
+template<class T>
 void AsyncWrap<T>::CloseIfInitialized() {
   // TODO(bajtos) protect against concurrent call of Send() from ThreadA
   // and CloseIfInitialized() from threadB
