@@ -15,6 +15,6 @@ exports.fixture = function(name) {
   return path.resolve(__dirname, '..', 'fixtures', name);
 };
 
-exports.debugScript = require('./debugger-client');
+exports.debugScript = require('./client').debugScript;
 
 exports.debuglog = require('./debuglog');

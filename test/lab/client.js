@@ -1,15 +1,16 @@
 var Promise = require('./promise');
-var tap = require('./tap');
 var net = require('net');
 var inherits = require('util').inherits;
-var inspect = require('util').inspect;
 var fork = require('child_process').fork;
 var EventEmitter = require('events').EventEmitter;
 var newlineJson = require('newline-json');
 var debuglog = require('./debuglog');
+var Scenario = require('./scenario');
 var linerstream = require('linerstream');
 
-module.exports = function debugScript(scriptPath) {
+exports.debugScript = debugScript;
+
+function debugScript(scriptPath) {
   return new Promise(function(resolve, reject) {
     var runner = require.resolve('./run-in-debugger');
     var child = fork(runner, [scriptPath], { silent: true });
@@ -38,7 +39,7 @@ module.exports = function debugScript(scriptPath) {
   })
     .bind({})
     .then(function(client) { this.client = client; return client; });
-};
+}
 
 function Client(conn, debugee) {
   EventEmitter.call(this);
@@ -124,61 +125,9 @@ Client.prototype.close = function() {
 
 Client.prototype.verifyScenario = function(builder) {
   var client = this;
-  var scenario = {
-    _commands: [],
-
-    sendRequest: function(req) {
-      this._commands.push({
-        run: function() {
-          return client.send(req).then(function() {
-            tap.current().pass('Send request ' + inspect(req));
-          });
-        },
-        inspect: function() {
-          return '(send request ' + inspect(req) + ')';
-        }
-      });
-      return this;
-    },
-
-    expectMessage: function(matcher) {
-      this._commands.push({
-        run: function() {
-          return client.receive().then(function(msg) {
-            tap.current().assertThat(
-              msg, matcher, 'Receive message ' + inspect(matcher));
-          });
-        },
-        inspect: function() {
-          return '(expect message that ' + inspect(matcher) + ')';
-        }
-      });
-      return this;
-    },
-
-    delay: function(timeInMs) {
-      this._commands.push({
-        run: function() {
-          return Promise.delay(timeInMs);
-        },
-        inspect: function() {
-          return '(wait ' + timeInMs + 'ms)';
-        }
-      });
-    }
-  };
-
-  return new Promise.resolve()
-    .then(function() {
-      builder(scenario);
-
-      return scenario._commands.reduce(
-        function(cur, next) {
-          return cur.then(function() {
-            debuglog('SCENARIO STEP %s', inspect(next));
-            return next.run();
-          });
-        },
-        Promise.resolve());
-    });
+  var scenario = new Scenario();
+  return new Promise(function(resolve, reject) {
+    builder(scenario);
+    resolve(scenario.run(client));
+  });
 };
