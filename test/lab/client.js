@@ -6,7 +6,7 @@ var EventEmitter = require('events').EventEmitter;
 var newlineJson = require('newline-json');
 var debuglog = require('./debuglog');
 var Scenario = require('./scenario');
-var linerstream = require('linerstream');
+var split = require('split');
 
 exports.debugScript = debugScript;
 
@@ -27,11 +27,11 @@ function debugScript(scriptPath) {
         .on('ready', function() { resolve(this); })
         .on('error', function(err) { reject(err); });
 
-      child.stdout.pipe(new linerstream().on('data', function(line) {
+      child.stdout.pipe(new split().on('data', function(line) {
         debuglog('CHILD STDOUT %s', line);
         client.emit('stdout', line);
       }));
-      child.stderr.pipe(new linerstream().on('data', function(line) {
+      child.stderr.pipe(new split().on('data', function(line) {
         debuglog('CHILD STDERR %s', line);
         client.emit('stderr', line);
       }));
