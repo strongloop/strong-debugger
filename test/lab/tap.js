@@ -4,6 +4,14 @@ var tap = require('tap');
 /* A helper for accessing the current test */
 exports.current = tap.current.bind(tap);
 
+/* A helper for running a single top-level test function
+ * that returns a promise */
+exports.run = function(testFn) {
+  testFn().then(
+    function() { tap.current().end(); },
+    function(err) { tap.current().threw(err); });
+};
+
 /* Modify TAP's Mocha API to support promises */
 exports.it = wrapWithPromiseHandler(tap.mocha.it);
 exports.describe = wrapWithPromiseHandler(tap.mocha.describe);
