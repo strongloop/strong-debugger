@@ -1,80 +1,94 @@
-// Global methods provided by the C++ bindings
-/* global
-sendFrontEndMessage:false,
-closeFrontEndConnection:false,
-enableDebugger:false,
-disableDebugger:false
-*/
-// sendDebuggerCommand:false,
+/*
+Global methods provided by the C++ bindings
+  bindings.sendFrontEndMessage(string)
+  bindings.closeFrontEndConnection()
+  bindings.enableDebugger()
+  bindings.disableDebugger()
+  bindings.sendDebuggerCommand(string)
 
-// Global methods exported by the script for consumption by C++ backend
-/* global
-onConnection:true,
-onFrontEndCommand:true,
-onDebuggerEnabled:true,
-onDebuggerDisabled:true,
-onDebuggerMessage:true
+Global methods exported by the script for consumption by C++ backend
+  bindings.onConnection()
+  bindings.onFrontEndCommand(string)
+  bindings.onDebuggerEnabled()
+  bindings.onDebuggerDisabled()
+  bindings.onDebuggerMessage(string)
 */
+/* global bindings:false */
 
-onConnection = function() {
+bindings.onConnection = function() {
 };
 
-onFrontEndCommand = function(line) {
+bindings.onFrontEndCommand = function(line) {
   var msg;
   try {
     msg = JSON.parse(line);
   } catch (err) {
-    sendFrontEndMessage(JSON.stringify({
-      error: 'Invalid message: ' + JSON.stringify(err.message)
-    }));
+    reportErrorToFrontEnd('Invalid message: ' + JSON.stringify(err.message));
     return;
   }
 
   // Custom Extension: send `{ "close": true }` to close the client connection
   if (!msg.method && msg.close) {
-    return closeFrontEndConnection();
+    return bindings.closeFrontEndConnection();
   }
 
   switch (msg.method) {
     case 'Debugger.enable':
       pushPendingRequest(msg);
-      enableDebugger();
+      bindings.enableDebugger();
       break;
     case 'Debugger.disable':
       pushPendingRequest(msg);
-      disableDebugger();
+      bindings.disableDebugger();
       break;
     default:
-      sendFrontEndMessage(JSON.stringify({
-        error: 'Unknown method ' + JSON.stringify(msg.method)
-      }));
+      reportErrorToFrontEnd(
+        'Unknown method ' + JSON.stringify(msg.method),
+        msg.id);
   }
 };
 
-onDebuggerEnabled = function() {
+bindings.onDebuggerEnabled = function() {
   popPendingRequestsForMethod('Debugger.enable').forEach(function(req) {
-    sendFrontEndMessage(JSON.stringify({
+    sendFrontEndMessage({
       id: req.id,
       result: {}
-    }));
+    });
   });
 };
 
-onDebuggerDisabled = function() {
+bindings.onDebuggerDisabled = function() {
   popPendingRequestsForMethod('Debugger.disable').forEach(function(req) {
-    sendFrontEndMessage(JSON.stringify({
+    sendFrontEndMessage({
       id: req.id,
       result: {}
-    }));
+    });
   });
 };
 
-onDebuggerMessage = function(data) {
+bindings.onDebuggerMessage = function(data) {
   var msg = JSON.parse(data);
   // Ignore the response to "disconnect" request sent by disableDebugger()
   if (msg.command === 'disconnect') return;
-  sendFrontEndMessage(data);
+  bindings.sendFrontEndMessage(data);
 };
+
+function sendFrontEndMessage(msg) {
+  bindings.sendFrontEndMessage(JSON.stringify(msg));
+}
+
+function reportErrorToFrontEnd(errorMessage, requestId) {
+  sendFrontEndMessage({
+    id: requestId,
+    error: errorMessage
+  });
+}
+
+/* Unused for now, but we will need this soon
+function sendDebuggerCommand(cmd) {
+  bindings.sendDebuggerCommand(JSON.stringify(cmd));
+}
+*/
 
 // Use `Object.create(null)` instead of `{}`, otherwise clients
 // may change prototype by sending `{ "method": "__proto__" }`
