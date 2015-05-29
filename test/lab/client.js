@@ -36,9 +36,9 @@ function debugScript(scriptPath) {
         client.emit('stderr', line);
       }));
     });
-  })
-    .bind({})
-    .then(function(client) { this.client = client; return client; });
+  }).disposer(function(client) {
+    client.close();
+  });
 }
 
 function Client(conn, debugee) {

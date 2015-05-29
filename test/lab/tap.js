@@ -1,5 +1,5 @@
-
 var tap = require('tap');
+var Promise = require('./promise');
 
 /* A helper for accessing the current test */
 exports.current = tap.current.bind(tap);
@@ -10,6 +10,14 @@ exports.run = function(testFn) {
   testFn().then(
     function() { tap.current().end(); },
     function(err) { tap.current().threw(err); });
+};
+
+/* A helper combining run + Promise.using */
+exports.runUsing = function() {
+  var args = arguments;
+  return this.run(function() {
+    return Promise.using.apply(Promise, args);
+  });
 };
 
 /* Modify TAP's Mocha API to support promises */

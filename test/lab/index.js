@@ -8,6 +8,7 @@ exports.it = tap.it;
 exports.describe = tap.describe;
 exports.current = tap.current;
 exports.run = tap.run;
+exports.runUsing = tap.runUsing;
 
 exports.expect = require('./expect');
 
