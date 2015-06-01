@@ -48,23 +48,26 @@ const char* Worker::InitIsolate() {
   Isolate::Scope isolate_scope(isolate_);
   NanScope();
 
-  Local<ObjectTemplate> global_templ = NanNew<ObjectTemplate>();
-  global_templ->Set(
+  Local<ObjectTemplate> bindings_templ = NanNew<ObjectTemplate>();
+  bindings_templ->Set(
     NanNew("sendFrontEndMessage"),
     NanNew<FunctionTemplate>(SendFrontEndMessage));
-  global_templ->Set(
+  bindings_templ->Set(
     NanNew("closeFrontEndConnection"),
     NanNew<FunctionTemplate>(CloseFrontEndConnection));
-  global_templ->Set(
+  bindings_templ->Set(
     NanNew("enableDebugger"),
     NanNew<FunctionTemplate>(EnableDebugger));
-  global_templ->Set(
+  bindings_templ->Set(
     NanNew("disableDebugger"),
     NanNew<FunctionTemplate>(DisableDebugger));
-  global_templ->Set(
+  bindings_templ->Set(
     NanNew("sendDebuggerCommand"),
     NanNew<FunctionTemplate>(SendDebuggerCommand));
   // TODO: error logging, debug logs (?)
+
+  Local<ObjectTemplate> global_templ = NanNew<ObjectTemplate>();
+  global_templ->Set(NanNew("bindings"), bindings_templ);
 
   ExtensionConfiguration* ext = NULL;
 #if NODE_VERSION_AT_LEAST(0, 11, 0)
@@ -110,7 +113,8 @@ void Worker::EmitScriptEvent(const char* event, const char* payload) {
   Context::Scope context_scope(context_);
 #endif
 
-  Local<Value> handler = context->Global()->Get(NanNew<String>(event));
+  Local<Value> bindings = context->Global()->Get(NanNew<String>("bindings"));
+  Local<Value> handler = bindings->ToObject()->Get(NanNew<String>(event));
   if (!handler->IsFunction()) {
     printf("[strong-debugger] ignored unhandled event %s(%s)\n",
            event,

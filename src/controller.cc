@@ -48,12 +48,16 @@ void Controller::Start(uint16_t port,
 
   err = AsyncInit(&worker_started_signal_, &Controller::WorkerStartedSignalCb);
   if (err) goto error;
+  // NOTE this handle stays referenced in order to block exit of the main
+  // process until we finish debugger initialisation
 
   err = AsyncInit(&enable_request_signal_, &Controller::EnableRequestSignalCb);
   if (err) goto error;
+  enable_request_signal_.Unref(); // don't block exit of the main process
 
   err = AsyncInit(&disable_request_signal_, &Controller::DisableRequestSignalCb);
   if (err) goto error;
+  disable_request_signal_.Unref(); // don't block exit of the main process
 
   worker_.Start(port);
 
@@ -123,6 +127,8 @@ void Controller::SendDebuggerCommand(const uint16_t* cmd, size_t cmd_len) {
 }
 
 void Controller::WorkerStartedSignalCb() {
+  // Allow the main event loop to exit even while Controller is running
+  worker_started_signal_.Unref();
   start_cb_(worker_.GetStartResult(),
             worker_.GetPort(),
             start_user_data_);

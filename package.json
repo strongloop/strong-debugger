@@ -17,7 +17,7 @@
   "scripts": {
     "install": "node-gyp rebuild",
     "pretest": "jscs . && jshint .",
-    "test": "echo Tests are not implemented yet."
+    "test": "tap test/lab/*.test.js test/*.test.js"
   },
   "license": {
     "name": "StrongLoop",
@@ -28,7 +28,14 @@
     "nan": "^1.8.4"
   },
   "devDependencies": {
+    "bluebird": "^2.9.26",
+    "chai": "^2.3.0",
+    "debug": "^2.2.0",
+    "dirty-chai": "^1.2.1",
     "jscs": "^1.10.0",
-    "jshint": "^2.6.0"
+    "jshint": "^2.6.0",
+    "newline-json": "^0.1.1",
+    "split": "^1.0.0",
+    "tap": "^1.2.0"
   }
 }

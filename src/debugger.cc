@@ -35,14 +35,12 @@ static void StartCallback(const char* err, uint16_t port, void* data) {
 
 NAN_METHOD(Start) {
   if (!args[0]->IsUint32()) {
-    // TODO(bajtos) add unit test
     return NanThrowTypeError(
       "The \"port\" argument must be an unsigned integer.");
   }
   const uint32_t port = args[0]->Uint32Value();
 
   if (port > MAX_PORT) {
-    // TODO(bajtos) add unit test
     return NanThrowRangeError(
       "The \"port\" argument must be a number between 0 - 65535.");
   }
@@ -54,7 +52,6 @@ NAN_METHOD(Start) {
   Local<String> worker_script = args[1].As<String>();
 
   if (!args[2]->IsFunction()) {
-    // TODO(bajtos) add unit test
     return NanThrowError("You must supply a callback argument.");
   }
   Local<Function> callback = args[2].As<Function>();
