@@ -18,6 +18,33 @@ Global methods exported by the script for consumption by C++ backend
 bindings.onConnection = function() {
 };
 
+var STUBBED_RESPONSES = {
+  'CSS.enable': {},
+  'Console.enable': {},
+  'DOM.enable': {},
+  'DOMStorage.enable': {},
+  'Database.enable': {},
+  'Debugger.setAsyncCallStackDepth': {},
+  'Debugger.setPauseOnExceptions': {},
+  'Debugger.skipStackFrames': {},
+  'IndexedDB.enable': {},
+  'Inspector.enable': {},
+  'Network.enable': {},
+  'Page.canEmulate': { result: false },
+  'Page.canScreencast': { result: false },
+  'Page.enable': {},
+  'Page.setShowViewportSizeOnResize': {},
+  'Profiler.enable': {},
+  // TODO detect the status of the debugged process
+  // return result:true when --debug-brk
+  'Runtime.isRunRequired': {},
+  'Profiler.setSamplingInterval': {},
+  'Runtime.enable': {},
+  'Timeline.enable': {},
+  'Worker.canInspectWorkers': { result: false },
+  'Worker.setAutoconnectToWorkers': {},
+};
+
 bindings.onFrontEndCommand = function(line) {
   var msg;
   try {
@@ -30,6 +57,14 @@ bindings.onFrontEndCommand = function(line) {
   // Custom Extension: send `{ "close": true }` to close the client connection
   if (!msg.method && msg.close) {
     return bindings.closeFrontEndConnection();
+  }
+
+  if (STUBBED_RESPONSES[msg.method]) {
+    sendFrontEndMessage({
+      id: msg.id,
+      result: STUBBED_RESPONSES[msg.method]
+    });
+    return;
   }
 
   switch (msg.method) {

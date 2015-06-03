@@ -109,10 +109,18 @@ Client.prototype.receive = function() {
     if (self._messagesReceived.length) {
       return resolve(self._messagesReceived.shift());
     }
-    self.once('message', function() {
+    self.once('message', onMessage);
+    self.once('error', onError);
+
+    function onMessage() {
+      self.removeListener('error', onError);
       return resolve(self._messagesReceived.shift());
-    });
-    self.once('error', reject);
+    }
+
+    function onError(err) {
+      self.removeListener('message', onMessage);
+      reject(err);
+    }
   }).timeout(1000, 'client.receive() timed out after 1s');
 };
 
