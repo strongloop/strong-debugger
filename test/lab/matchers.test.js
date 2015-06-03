@@ -1,7 +1,7 @@
 var tap = require('tap');
 var m = require('./matchers');
 
-tap.test('containsProperty', function(tt) {
+tap.test('containsProperties', function(tt) {
   tt.assertThat(
     { key: 'value', extra: 2 },
     m.containsProperties({ key: 'value' }),
@@ -33,6 +33,21 @@ tap.test('containsProperty', function(tt) {
     { foo: 'bar' },
     m.containsProperties({ key: 'value' }),
     'reject missing property');
+
+  tt.assertThat(
+    { key: null, extra: null },
+    m.containsProperties({ key: null }),
+    'expected property value is null');
+
+  tt.assertNotThat(
+    null,
+    m.containsProperties({ key: 'value' }),
+    'actual value is null, expects a matcher');
+
+  tt.assertNotThat(
+    null,
+    { key: 'value' },
+    'actual value is null, expects an object');
 
   tt.end();
 });
