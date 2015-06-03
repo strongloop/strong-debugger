@@ -13,7 +13,13 @@ exports.debugScript = debugScript;
 function debugScript(scriptPath) {
   return new Promise(function(resolve, reject) {
     var runner = require.resolve('./run-in-debugger');
-    var child = fork(runner, [scriptPath], { silent: true });
+    var execArgv = process.execArgv.filter(function(a) {
+      return !/^--debug/.test(a);
+    });
+    var child = fork(runner, [scriptPath], {
+      silent: true,
+      execArgv: execArgv
+    });
     child.on('error', reject);
     child.on('exit', function(code) {
       reject(new Error('Unexpected exit ' +
