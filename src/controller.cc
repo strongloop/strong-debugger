@@ -16,9 +16,10 @@ static Controller * singleton = NULL;
 
 Controller::Controller(Isolate* main_isolate,
                        uv_loop_t* main_loop,
-                       const char* workerScript)
+                       const char* workerScript,
+                       bool debuglog_enabled)
   : isolate_(main_isolate), event_loop_(main_loop),
-    worker_(this, workerScript), start_cb_(NULL) {
+    worker_(this, workerScript, debuglog_enabled), start_cb_(NULL) {
 }
 
 Controller::~Controller() {

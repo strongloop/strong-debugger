@@ -51,16 +51,23 @@ NAN_METHOD(Start) {
   }
   Local<String> worker_script = args[1].As<String>();
 
-  if (!args[2]->IsFunction()) {
+  if (!args[2]->IsBoolean()) {
+    return NanThrowRangeError(
+      "The third argument must be a boolean debuglog flag.");
+  }
+  bool debuglog_enabled = args[2]->BooleanValue();
+
+  if (!args[3]->IsFunction()) {
     return NanThrowError("You must supply a callback argument.");
   }
-  Local<Function> callback = args[2].As<Function>();
+  Local<Function> callback = args[3].As<Function>();
 
   Controller* controller = Controller::GetInstance(args.GetIsolate());
   if (!controller) {
     controller = new Controller(args.GetIsolate(),
                                 uv_default_loop(),
-                                *NanUtf8String(worker_script));
+                                *NanUtf8String(worker_script),
+                                debuglog_enabled);
   }
 
   if (!controller) {

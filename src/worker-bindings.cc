@@ -64,7 +64,10 @@ const char* Worker::InitIsolate() {
   bindings_templ->Set(
     NanNew("sendDebuggerCommand"),
     NanNew<FunctionTemplate>(SendDebuggerCommand));
-  // TODO: error logging, debug logs (?)
+  bindings_templ->Set(
+    NanNew("log"),
+    NanNew<FunctionTemplate>(Log));
+  // TODO: error logging(?)
 
   Local<ObjectTemplate> global_templ = NanNew<ObjectTemplate>();
   global_templ->Set(NanNew("bindings"), bindings_templ);
@@ -186,6 +189,19 @@ NAN_METHOD(Worker::DisableDebugger) {
   Worker* worker = FromIsolate(args.GetIsolate());
 
   worker->Disable();
+  NanReturnUndefined();
+}
+
+NAN_METHOD(Worker::Log) {
+  Worker* worker = FromIsolate(args.GetIsolate());
+  if (!worker->debuglog_enabled_) {
+    NanReturnUndefined();
+  }
+
+  NanUtf8String str(args[0]);
+  const char* msg = *str ? *str : "toString() threw an exception";
+  fprintf(stderr, "  strong-debugger: %s\n", msg);
+
   NanReturnUndefined();
 }
 

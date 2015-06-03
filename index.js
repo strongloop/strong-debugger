@@ -1,6 +1,7 @@
 var bindings = require('bindings');
 var dbg = bindings('debugger');
 var fs = require('fs');
+var debuglogEnabled = require('debug')('strong-debugger').enabled;
 
 var scriptPath = require.resolve('./src/worker.js');
 var WORKER_SCRIPT = fs.readFileSync(scriptPath, 'utf-8');
@@ -11,7 +12,7 @@ var WORKER_SCRIPT = fs.readFileSync(scriptPath, 'utf-8');
  * @param {Function<Error=,Number>} callback
  */
 exports.start = function(port, cb) {
-  dbg.start(port, WORKER_SCRIPT, cb);
+  dbg.start(port, WORKER_SCRIPT, debuglogEnabled, cb);
 };
 
 /**

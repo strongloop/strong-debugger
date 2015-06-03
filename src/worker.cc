@@ -7,10 +7,13 @@
 namespace strongloop {
 namespace debugger {
 
-Worker::Worker(Controller* controller, const char* worker_script)
+Worker::Worker(Controller* controller,
+               const char* worker_script,
+               bool debuglog_enabled)
   : controller_(controller), server_port_(-1),
     isolate_(NULL), event_loop_(NULL),
-    worker_script_(worker_script) {
+    worker_script_(worker_script),
+    debuglog_enabled_(debuglog_enabled) {
   CHECK(!!controller_);
 }
 

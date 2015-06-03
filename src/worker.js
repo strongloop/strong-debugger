@@ -5,6 +5,7 @@ Global methods provided by the C++ bindings
   bindings.enableDebugger()
   bindings.disableDebugger()
   bindings.sendDebuggerCommand(string)
+  bindings.log(string)
 
 Global methods exported by the script for consumption by C++ backend
   bindings.onConnection()
@@ -140,4 +141,18 @@ function popPendingRequestsForMethod(cmd) {
   var result = pendingRequests[cmd] || [];
   pendingRequests[cmd] = [];
   return result;
+}
+
+function debuglog() {
+  var msg = Array.prototype.map.call(arguments, inspect).join(' ');
+  bindings.log(msg);
+
+  function inspect(val) {
+    return typeof val === 'object' ? JSON.stringify(val) : val.toString();
+  }
+}
+
+// reference unused API
+if (0) {
+  debuglog();
 }

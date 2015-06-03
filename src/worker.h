@@ -26,7 +26,9 @@ class Controller;
  */
 class Worker {
   public:
-    Worker(Controller* controller, const char* worker_script);
+    Worker(Controller* controller,
+           const char* worker_script,
+           bool debuglog_enabled);
 
     // API for Controller, may be called from another thread
     void Start(uint16_t port);
@@ -103,6 +105,7 @@ class Worker {
 #endif
 
     std::string worker_script_;
+    bool debuglog_enabled_;
 
     // V8 bindings
     void EmitScriptEvent(const char* event, const char* payload = NULL);
@@ -111,6 +114,7 @@ class Worker {
     static NAN_METHOD(EnableDebugger);
     static NAN_METHOD(DisableDebugger);
     static NAN_METHOD(SendDebuggerCommand);
+    static NAN_METHOD(Log);
 };
 
 } // namespace debugger
