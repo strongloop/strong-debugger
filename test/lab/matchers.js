@@ -1,6 +1,26 @@
 var inspect = require('util').inspect;
 var tap = require('tap');
 
+exports.hasValueOfType = function(type) {
+  return {
+    expectedValue: '(any ' + type + ' value)',
+    test: function(actual) {
+      return actual && typeof actual === type;
+    },
+    inspect: function() {
+      return '(has any ' + type + ' value)';
+    },
+  };
+};
+
+exports.isObject = function() {
+  return exports.hasValueOfType('object');
+};
+
+exports.isString = function() {
+  return exports.hasValueOfType('string');
+};
+
 exports.containsProperties = function(expected) {
   return {
     expectedValue: expected,
@@ -20,6 +40,22 @@ exports.containsProperties = function(expected) {
 exports.deepEquals = function(expected) {
   // non-primitive values are compared using deep equal by default
   return expected;
+};
+
+exports.startsWith = function(expected) {
+  return {
+    expectedValue: expected,
+    test: function(actual) {
+      if (!actual.length) return false;
+      if (expected.length > actual.length) return false;
+      return Object.keys(expected).every(function(ix) {
+        return test(actual[ix], expected[ix]);
+      });
+    },
+    inspect: function() {
+      return '(array starting with items ' + inspect(expected) + ')';
+    },
+  };
 };
 
 tap.Test.prototype.addAssert('assertThat', 2,

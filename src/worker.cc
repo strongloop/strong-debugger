@@ -17,7 +17,9 @@ Worker::Worker(Controller* controller,
     debuglog_enabled_(debuglog_enabled) {
   CHECK(!!controller_);
 
-  LoadScriptFile(script_root, "worker.js");
+  LoadScriptFile(script_root, "convert.js");
+  LoadScriptFile(script_root, "context.js");
+  LoadScriptFile(script_root, "debugger-agent.js");
 }
 
 void Worker::Start(uint16_t port) {

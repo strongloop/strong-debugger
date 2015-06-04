@@ -2,11 +2,13 @@ var Promise = require('./promise');
 var tap = require('./tap');
 var inspect = require('util').inspect;
 var debuglog = require('./debuglog');
+var m = require('./matchers');
 
 module.exports = Scenario;
 
 function Scenario() {
   this._commands = [];
+  this.lastReqId = 0;
 }
 
 Scenario.prototype.run = function(client) {
@@ -21,6 +23,8 @@ Scenario.prototype.run = function(client) {
 };
 
 Scenario.prototype.sendRequest = function(req) {
+  var id = ++this.lastReqId;
+  if (!req.id) { req.id = id; }
   this._commands.push({
     run: function(client) {
       return client.send(req).then(function() {
@@ -47,6 +51,14 @@ Scenario.prototype.expectMessage = function(matcher) {
     }
   });
   return this;
+};
+
+Scenario.prototype.expectEvent = function(method, paramMatcher) {
+  var matcher = {
+    method: method,
+    params: paramMatcher ? paramMatcher : m.isObject()
+  };
+  this.expectMessage(matcher);
 };
 
 Scenario.prototype.delay = function(timeInMs) {

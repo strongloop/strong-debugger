@@ -5,16 +5,23 @@ l.runUsing(l.debugScript(l.fixture('periodic-break.js')), function(client) {
   return client.verifyScenario(function(s) {
     s.sendRequest({ id: 1, method:'Debugger.enable' });
     s.expectMessage({ id: 1, result: {}});
-    // FIXME - we should report a DevTools event, not a V8 debugger event
-    s.expectMessage(m.containsProperties({
-      type: 'event',
-      event: 'break',
-      body: m.containsProperties({
-        sourceLine: 1,
-        script: m.containsProperties({
-          name: /[\\\/]test[\\\/]fixtures[\\\/]periodic-break\.js$/
-        })
-      })
-    }));
+    s.expectEvent('Debugger.paused', {
+      callFrames: m.startsWith([
+        {
+          'this': m.isObject(),
+          scopeChain: m.isObject(),
+          location: m.containsProperties({
+            lineNumber: 1,
+            columnNumber: 2,
+            scriptId: m.isString() // script-id is specific to Node version
+          }),
+          functionName: '',
+          callFrameId: '0'
+        },
+      ]),
+      reason: m.isString(),
+      data: null,
+      // ignored: hitBreakpoints, asyncStackTrace
+    });
   });
 });
