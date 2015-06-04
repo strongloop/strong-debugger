@@ -9,6 +9,7 @@ namespace debugger {
 
 using v8::Handle;
 using v8::Local;
+using v8::Locker;
 using v8::HandleScope;
 using v8::String;
 
@@ -59,6 +60,11 @@ void Controller::Start(uint16_t port,
   err = AsyncInit(&disable_request_signal_, &Controller::DisableRequestSignalCb);
   if (err) goto error;
   disable_request_signal_.Unref(); // don't block exit of the main process
+
+  err = AsyncInit(&process_debug_messages_signal_,
+                  &Controller::ProcessDebugMessagesCb);
+  if (err) goto error;
+  process_debug_messages_signal_.Unref(); // don't block exit
 
   worker_.Start(port);
 
@@ -112,11 +118,19 @@ void Controller::SignalWorkerStarted() {
   worker_started_signal_.Send();
 }
 
+void Controller::SignalProcessDebugMessages() {
+  process_debug_messages_signal_.Send();
+}
+
 void Controller::SendDebuggerCommand(const char* cmd, size_t cmd_len) {
   uint16_t* cmd2 = new uint16_t[cmd_len];
   for (size_t i=0; i<cmd_len; i++) cmd2[i] = static_cast<uint8_t>(cmd[i]);
   SendDebuggerCommand(cmd2, cmd_len);
   delete[] cmd2;
+
+  // Call v8::Debug::ProcessDebugMessages() to ensure the message is handled
+  // even if there is no JS code running at the moment.
+  SignalProcessDebugMessages();
 }
 
 void Controller::SendDebuggerCommand(const uint16_t* cmd, size_t cmd_len) {
@@ -133,6 +147,14 @@ void Controller::WorkerStartedSignalCb() {
   start_cb_(worker_.GetStartResult(),
             worker_.GetPort(),
             start_user_data_);
+}
+
+void Controller::ProcessDebugMessagesCb() {
+  Locker locker(isolate_);
+  Isolate::Scope isolate_scope(isolate_);
+  NanScope();
+
+  Debug::ProcessDebugMessages();
 }
 
 /***** PRIVATE METHODS *****/
