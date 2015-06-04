@@ -25,7 +25,7 @@ class Controller {
   public:
     Controller(Isolate* main_isolate,
                uv_loop_t* main_loop,
-               const char* workerScript,
+               const char* script_root,
                bool debuglog_enabled);
 
     static Controller* GetInstance(Isolate* isolate);

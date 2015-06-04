@@ -1,7 +1,7 @@
 #ifndef DEBUGGER_WORKER_H
 #define DEBUGGER_WORKER_H
 
-#include <memory>
+#include <vector>
 #include <uv.h>
 #include <nan.h>
 #include <deque>
@@ -104,7 +104,16 @@ class Worker {
     uv_loop_t event_loop_inst_;
 #endif
 
-    std::string worker_script_;
+    struct ScriptDefinition {
+      std::string filename;
+      std::string contents;
+      inline ScriptDefinition(std::string f, std::string c)
+        : filename(f), contents(c) {
+        }
+    };
+    std::vector<ScriptDefinition> scripts_;
+    void LoadScriptFile(const char* script_root, const char* filepath);
+
     bool debuglog_enabled_;
 
     // V8 bindings

@@ -49,7 +49,7 @@ NAN_METHOD(Start) {
     return NanThrowRangeError(
       "The second argument must be a string - javascript code.");
   }
-  Local<String> worker_script = args[1].As<String>();
+  Local<String> script_root = args[1].As<String>();
 
   if (!args[2]->IsBoolean()) {
     return NanThrowRangeError(
@@ -66,7 +66,7 @@ NAN_METHOD(Start) {
   if (!controller) {
     controller = new Controller(args.GetIsolate(),
                                 uv_default_loop(),
-                                *NanUtf8String(worker_script),
+                                *NanUtf8String(script_root),
                                 debuglog_enabled);
   }
 
