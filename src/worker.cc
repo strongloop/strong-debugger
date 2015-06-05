@@ -75,7 +75,7 @@ void Worker::Start(uint16_t port) {
                              this));
   if (err) goto error;
 
-  controller_->SignalWorkerStarted();
+  // NOTE(bajtos) Don't call SignalWorkerStarted, it's called from ThreadCb
   return;
 
 error:
@@ -133,7 +133,7 @@ void Worker::UnhandledError(const char* msg) {
 }
 
 void Worker::ThreadCb(Worker* self) {
-  self->controller_->SignalWorkerStarted(); \
+  self->controller_->SignalWorkerStarted();
   self->Run();
 }
 
