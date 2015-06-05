@@ -9,10 +9,7 @@ l.runUsing(l.debugScript(l.fixture('periodic-logger.js')), function(client) {
         s.sendRequest({ id: 1, method: 'Debugger.enable' });
         s.expectMessage(m.containsProperties({ id: 1 }));
         // FIXME - skip all events messages instead
-        s.expectMessage(m.containsProperties({
-          type: 'event',
-          event: 'break',
-        }));
+        s.expectEvent('Debugger.paused');
         s.delay(200);
         s.sendRequest({ id: 2, method: 'Debugger.disable' });
         s.expectMessage({ id: 2, result: {} });

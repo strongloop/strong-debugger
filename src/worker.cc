@@ -3,15 +3,23 @@
 #include "worker.h"
 #include "controller.h"
 #include "compat.h"
+#include <sstream>
+#include <fstream>
 
 namespace strongloop {
 namespace debugger {
 
-Worker::Worker(Controller* controller, const char* worker_script)
+Worker::Worker(Controller* controller,
+               const char* script_root,
+               bool debuglog_enabled)
   : controller_(controller), server_port_(-1),
     isolate_(NULL), event_loop_(NULL),
-    worker_script_(worker_script) {
+    debuglog_enabled_(debuglog_enabled) {
   CHECK(!!controller_);
+
+  LoadScriptFile(script_root, "convert.js");
+  LoadScriptFile(script_root, "context.js");
+  LoadScriptFile(script_root, "debugger-agent.js");
 }
 
 void Worker::Start(uint16_t port) {
@@ -67,7 +75,7 @@ void Worker::Start(uint16_t port) {
                              this));
   if (err) goto error;
 
-  controller_->SignalWorkerStarted();
+  // NOTE(bajtos) Don't call SignalWorkerStarted, it's called from ThreadCb
   return;
 
 error:
@@ -125,7 +133,7 @@ void Worker::UnhandledError(const char* msg) {
 }
 
 void Worker::ThreadCb(Worker* self) {
-  self->controller_->SignalWorkerStarted(); \
+  self->controller_->SignalWorkerStarted();
   self->Run();
 }
 
@@ -302,6 +310,25 @@ void Worker::ClientErrorCb(IncomingConnection<Worker>* /*client*/,
                            UvError err) {
   if (err != UV_EOF) UnhandledError(uv_strerror(err));
   CloseClientConnection();
+}
+
+void Worker::LoadScriptFile(const char* root, const char* filepath) {
+  std::string fullpath(root);
+  fullpath += filepath;
+
+  std::ifstream reader(fullpath.c_str());
+  if (!reader) {
+    std::string msg("Cannot read backend script ");
+    msg += fullpath;
+    UnhandledError(msg.c_str());
+    return;
+  }
+
+  std::stringstream buffer;
+  buffer << reader.rdbuf();
+
+  ScriptDefinition def(fullpath, buffer.str());
+  scripts_.push_back(def);
 }
 
 } // namespace debugger

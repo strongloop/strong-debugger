@@ -25,7 +25,8 @@ class Controller {
   public:
     Controller(Isolate* main_isolate,
                uv_loop_t* main_loop,
-               const char* workerScript);
+               const char* script_root,
+               bool debuglog_enabled);
 
     static Controller* GetInstance(Isolate* isolate);
 
@@ -43,6 +44,7 @@ class Controller {
     void SignalEnableRequest();
     void SignalDisableRequest();
     void SignalWorkerStarted();
+    void SignalProcessDebugMessages();
     void SendDebuggerCommand(const char* cmd, size_t cmd_len);
     void SendDebuggerCommand(const uint16_t* cmd, size_t cmd_len);
 
@@ -51,6 +53,7 @@ class Controller {
     void EnableRequestSignalCb();
     void DisableRequestSignalCb();
     void WorkerStartedSignalCb();
+    void ProcessDebugMessagesCb();
     static void MessageHandler(const Debug::Message& message);
 
     UvError AsyncInit(AsyncWrap<Controller>* handle,
@@ -63,6 +66,7 @@ class Controller {
     AsyncWrap<Controller> enable_request_signal_;
     AsyncWrap<Controller> disable_request_signal_;
     AsyncWrap<Controller> worker_started_signal_;
+    AsyncWrap<Controller> process_debug_messages_signal_;
 
     Worker worker_;
 

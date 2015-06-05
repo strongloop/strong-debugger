@@ -13,7 +13,13 @@ exports.debugScript = debugScript;
 function debugScript(scriptPath) {
   return new Promise(function(resolve, reject) {
     var runner = require.resolve('./run-in-debugger');
-    var child = fork(runner, [scriptPath], { silent: true });
+    var execArgv = process.execArgv.filter(function(a) {
+      return !/^--debug/.test(a);
+    });
+    var child = fork(runner, [scriptPath], {
+      silent: true,
+      execArgv: execArgv
+    });
     child.on('error', reject);
     child.on('exit', function(code) {
       reject(new Error('Unexpected exit ' +
@@ -103,16 +109,25 @@ Client.prototype.receive = function() {
     if (self._messagesReceived.length) {
       return resolve(self._messagesReceived.shift());
     }
-    self.once('message', function() {
+    self.once('message', onMessage);
+    self.once('error', onError);
+
+    function onMessage() {
+      self.removeListener('error', onError);
       return resolve(self._messagesReceived.shift());
-    });
-    self.once('error', reject);
+    }
+
+    function onError(err) {
+      self.removeListener('message', onMessage);
+      reject(err);
+    }
   }).timeout(1000, 'client.receive() timed out after 1s');
 };
 
 Client.prototype.close = function() {
   var self = this;
   return new Promise(function(resolve, reject) {
+    self._conn.end();
     // Allow some time for the client to read
     // any debugger messages waiting in the connection
     setTimeout(function() {

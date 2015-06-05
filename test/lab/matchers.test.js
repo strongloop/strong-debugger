@@ -1,7 +1,7 @@
 var tap = require('tap');
 var m = require('./matchers');
 
-tap.test('containsProperty', function(tt) {
+tap.test('containsProperties', function(tt) {
   tt.assertThat(
     { key: 'value', extra: 2 },
     m.containsProperties({ key: 'value' }),
@@ -34,6 +34,21 @@ tap.test('containsProperty', function(tt) {
     m.containsProperties({ key: 'value' }),
     'reject missing property');
 
+  tt.assertThat(
+    { key: null, extra: null },
+    m.containsProperties({ key: null }),
+    'expected property value is null');
+
+  tt.assertNotThat(
+    null,
+    m.containsProperties({ key: 'value' }),
+    'actual value is null, expects a matcher');
+
+  tt.assertNotThat(
+    null,
+    { key: 'value' },
+    'actual value is null, expects an object');
+
   tt.end();
 });
 
@@ -47,6 +62,49 @@ tap.test('deepEquals', function(tt) {
     { key: 'value' },
     m.deepEquals({ key: 'value', extra: 2 }),
     'reject missing property');
+
+  tt.end();
+});
+
+tap.test('hasValueOfType', function(tt) {
+  tt.assertThat('text', m.hasValueOfType('string'));
+  tt.assertNotThat({}, m.hasValueOfType('string'));
+  tt.assertNotThat(null, m.hasValueOfType('string'));
+  tt.assertNotThat(undefined, m.hasValueOfType('string'));
+
+  tt.assertThat({}, m.hasValueOfType('object'));
+  tt.assertNotThat('text', m.hasValueOfType('object'));
+  tt.assertNotThat(null, m.hasValueOfType('object'));
+  tt.assertNotThat(undefined, m.hasValueOfType('object'));
+
+  tt.end();
+});
+
+tap.test('startsWith', function(tt) {
+  tt.assertThat(
+    [1, 2, 3],
+    m.startsWith([1, 2]),
+    'accepts number items');
+
+  tt.assertNotThat(
+    [1, 2, 3],
+    m.startsWith([2, 1]),
+    'rejects number items');
+
+  tt.assertThat(
+    [{ key: 'value1', extra: 'value' }, { key: 'value2' }],
+    m.startsWith([m.containsProperties({ key: 'value1' })]),
+    'accepts deep matchers');
+
+  tt.assertNotThat(
+    [{ key: 'value1', extra: 'value' }, { key: 'value2' }],
+    m.startsWith([m.containsProperties({ key: 'value1', extra: 'invalid' })]),
+    'accepts deep matchers');
+
+  tt.assertNotThat(
+    { 0: 'v1', 1: 'v2' },
+    m.startsWith(['v1']),
+    'rejects object values');
 
   tt.end();
 });

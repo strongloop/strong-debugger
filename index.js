@@ -1,9 +1,10 @@
+var path = require('path');
 var bindings = require('bindings');
 var dbg = bindings('debugger');
-var fs = require('fs');
+var debuglogEnabled = require('debug')('strong-debugger').enabled;
 
-var scriptPath = require.resolve('./src/worker.js');
-var WORKER_SCRIPT = fs.readFileSync(scriptPath, 'utf-8');
+var workerPath = require.resolve('./backend/context.js');
+var scriptRoot = path.dirname(workerPath) + path.sep;
 
 /**
  * Start the background thread providing TCP server for DevTools protocol.
@@ -11,7 +12,7 @@ var WORKER_SCRIPT = fs.readFileSync(scriptPath, 'utf-8');
  * @param {Function<Error=,Number>} callback
  */
 exports.start = function(port, cb) {
-  dbg.start(port, WORKER_SCRIPT, cb);
+  dbg.start(port, scriptRoot, debuglogEnabled, cb);
 };
 
 /**

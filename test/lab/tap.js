@@ -20,6 +20,14 @@ exports.runUsing = function() {
   });
 };
 
+exports.waitForPendingSubTests = function() {
+  return new Promise(function(resolve, reject) {
+    tap.current().test(function() {
+      resolve();
+    });
+  });
+};
+
 /* Modify TAP's Mocha API to support promises */
 exports.it = wrapWithPromiseHandler(tap.mocha.it);
 exports.describe = wrapWithPromiseHandler(tap.mocha.describe);

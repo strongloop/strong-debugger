@@ -64,7 +64,10 @@ const char* Worker::InitIsolate() {
   bindings_templ->Set(
     NanNew("sendDebuggerCommand"),
     NanNew<FunctionTemplate>(SendDebuggerCommand));
-  // TODO: error logging, debug logs (?)
+  bindings_templ->Set(
+    NanNew("log"),
+    NanNew<FunctionTemplate>(Log));
+  // TODO: error logging(?)
 
   Local<ObjectTemplate> global_templ = NanNew<ObjectTemplate>();
   global_templ->Set(NanNew("bindings"), bindings_templ);
@@ -79,22 +82,25 @@ const char* Worker::InitIsolate() {
   Context::Scope context_scope(context_);
 #endif
 
-  Local<String> src = NanNew(worker_script_);
-  Local<String> filename = NanNew("strong-debugger/lib/worker.js");
+  for (size_t ix = 0; ix < scripts_.size(); ix++) {
+    const char* script_path = scripts_[ix].filename.c_str();
+    Local<String> filename = NanNew(script_path);
+    Local<String> src = NanNew(scripts_[ix].contents.c_str());
 
-  TryCatch try_catch;
-  Local<Script> script = Script::Compile(src, filename);
-  if (script.IsEmpty()) {
-    fprintf(stderr, "[strong-debugger] Cannot compile lib/worker.js\n");
-    PrintErrorMessage(try_catch.Message());
-    return "Internal error: cannot compile lib/worker.js";
-  }
+    TryCatch try_catch;
+    Local<Script> script = Script::Compile(src, filename);
+    if (script.IsEmpty()) {
+      fprintf(stderr, "[strong-debugger] Cannot compile %s\n", script_path);
+      PrintErrorMessage(try_catch.Message());
+      return "Internal error: cannot compile one of the worker scripts.";
+    }
 
-  script->Run();
-  if (try_catch.HasCaught()) {
-    printf("[strong-debugger] Cannot load lib/worker.js\n");
-    PrintErrorMessage(try_catch.Message());
-    return "Internal error: cannot load lib/worker.js";
+    script->Run();
+    if (try_catch.HasCaught()) {
+      printf("[strong-debugger] Cannot load %s\n", script_path);
+      PrintErrorMessage(try_catch.Message());
+      return "Internal error: cannot load one of the worker scripts.";
+    }
   }
 
   return NULL;
@@ -186,6 +192,19 @@ NAN_METHOD(Worker::DisableDebugger) {
   Worker* worker = FromIsolate(args.GetIsolate());
 
   worker->Disable();
+  NanReturnUndefined();
+}
+
+NAN_METHOD(Worker::Log) {
+  Worker* worker = FromIsolate(args.GetIsolate());
+  if (!worker->debuglog_enabled_) {
+    NanReturnUndefined();
+  }
+
+  NanUtf8String str(args[0]);
+  const char* msg = *str ? *str : "toString() threw an exception";
+  fprintf(stderr, "  strong-debugger: %s\n", msg);
+
   NanReturnUndefined();
 }
 
