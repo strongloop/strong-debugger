@@ -127,6 +127,7 @@ Client.prototype.receive = function() {
 Client.prototype.close = function() {
   var self = this;
   return new Promise(function(resolve, reject) {
+    self._conn.end();
     // Allow some time for the client to read
     // any debugger messages waiting in the connection
     setTimeout(function() {
