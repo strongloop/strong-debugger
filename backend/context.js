@@ -1,5 +1,5 @@
 /*
-Global methods provided by the C++ bindings
+Methods provided by the C++ bindings
   bindings.sendFrontEndMessage(string)
   bindings.closeFrontEndConnection()
   bindings.enableDebugger()
@@ -7,7 +7,7 @@ Global methods provided by the C++ bindings
   bindings.sendDebuggerCommand(string)
   bindings.log(string)
 
-Global methods exported by the script for consumption by C++ backend
+Methods exported by the script for consumption by C++ backend
   bindings.onConnection()
   bindings.onFrontEndCommand(string)
   bindings.onDebuggerEnabled()
@@ -24,6 +24,7 @@ var context = {
   _reqCallbacks: {},
   _enabled: false,
   _enableCallbacks: [],
+  _afterEnableCallbacks: [],
 };
 
 /**
@@ -60,11 +61,24 @@ context.enableDebugger = function(cb) {
   context._enableCallbacks.push(cb);
 };
 
+/**
+ * Defer execution of the provided function until the debugger is enabled.
+ * @param {function()} cb The function to execute.
+ */
+context.waitForDebuggerEnabled = function(cb) {
+  if (context._enabled) return cb();
+  debuglog('Debugger is was enabled yet, scheduling the callback for later.');
+  context._afterEnableCallbacks.push(cb);
+};
+
 bindings.onDebuggerEnabled = function() {
   context._enabled = true;
   if (!context._enableCallbacks.length) return;
   context._enableCallbacks.forEach(function(cb) { cb(); });
   context._enableCallbacks = [];
+
+  context._afterEnableCallbacks.forEach(function(cb) { cb(); });
+  context._afterEnableCallbacks = [];
 };
 
 /**
@@ -313,4 +327,3 @@ context.evaluateGlobal = function(expression, cb) {
       cb('evaluateGlobal does not yet support response type ' + result.type);
     });
 };
-

@@ -20,6 +20,7 @@ Worker::Worker(Controller* controller,
   LoadScriptFile(script_root, "convert.js");
   LoadScriptFile(script_root, "context.js");
   LoadScriptFile(script_root, "debugger-agent.js");
+  LoadScriptFile(script_root, "page-agent.js");
 }
 
 void Worker::Start(uint16_t port) {

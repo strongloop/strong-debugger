@@ -23,8 +23,11 @@ Scenario.prototype.run = function(client) {
 };
 
 Scenario.prototype.sendRequest = function(req) {
-  var id = ++this.lastReqId;
-  if (!req.id) { req.id = id; }
+  if (req.id) {
+    if (req.id > this.lastReqId) this.lastReqId = req.id;
+  } else {
+    req.id = ++this.lastReqId;
+  }
   this._commands.push({
     run: function(client) {
       return client.send(req).then(function() {
@@ -70,4 +73,9 @@ Scenario.prototype.delay = function(timeInMs) {
       return '(wait ' + timeInMs + 'ms)';
     }
   });
+};
+
+Scenario.prototype.enableDebugger = function() {
+  this.sendRequest({ method: 'Debugger.enable' });
+  this.expectMessage(m.containsProperties({ id: this.lastReqId }));
 };
