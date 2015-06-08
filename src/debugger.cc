@@ -34,39 +34,47 @@ static void StartCallback(const char* err, uint16_t port, void* data) {
 }
 
 NAN_METHOD(Start) {
-  if (!args[0]->IsUint32()) {
-    return NanThrowTypeError(
-      "The \"port\" argument must be an unsigned integer.");
+  if (!args[0]->IsObject()) {
+   return NanThrowTypeError(
+     "Internal error: the first arg must be an \"options\" object");
   }
-  const uint32_t port = args[0]->Uint32Value();
+
+  Local<Object> options = args[0].As<Object>();
+
+  Local<Value> port_handle = options->Get(NanNew("port"));
+  if (!port_handle->IsUint32()) {
+    return NanThrowTypeError(
+      "The \"port\" option must be an unsigned integer.");
+  }
+  const uint32_t port = port_handle->Uint32Value();
 
   if (port > MAX_PORT) {
     return NanThrowRangeError(
-      "The \"port\" argument must be a number between 0 - 65535.");
+      "The \"port\" option must be a number between 0 - 65535.");
   }
 
-  if (!args[1]->IsString()) {
-    return NanThrowRangeError(
-      "The second argument must be a string - javascript code.");
+  Local<Value> val = options->Get(NanNew("scriptRoot"));
+  if (!val->IsString()) {
+    return NanThrowTypeError("options.scriptRoot must be a string");
   }
-  Local<String> script_root = args[1].As<String>();
+  NanUtf8String script_root(val);
 
-  if (!args[2]->IsBoolean()) {
-    return NanThrowRangeError(
-      "The third argument must be a boolean debuglog flag.");
+  val = options->Get(NanNew("debuglogEnabled"));
+  if (!val->IsBoolean()) {
+    return NanThrowTypeError("options.debuglogEnabled must be a boolean");
   }
-  bool debuglog_enabled = args[2]->BooleanValue();
+  bool debuglog_enabled = val->BooleanValue();
 
-  if (!args[3]->IsFunction()) {
+  if (!args[1]->IsFunction()) {
     return NanThrowError("You must supply a callback argument.");
   }
-  Local<Function> callback = args[3].As<Function>();
+  Local<Function> callback = args[1].As<Function>();
 
   Controller* controller = Controller::GetInstance(args.GetIsolate());
   if (!controller) {
     controller = new Controller(args.GetIsolate(),
                                 uv_default_loop(),
-                                *NanUtf8String(script_root),
+                                *script_root,
                                 debuglog_enabled);
   }
 

@@ -12,7 +12,11 @@ var scriptRoot = path.dirname(workerPath) + path.sep;
  * @param {Function<Error=,Number>} callback
  */
 exports.start = function(port, cb) {
-  dbg.start(port, scriptRoot, debuglogEnabled, cb);
+  dbg.start({
+    port: port,
+    scriptRoot: scriptRoot,
+    debuglogEnabled: debuglogEnabled
+  }, cb);
 };
 
 /**
