@@ -17,6 +17,14 @@ context.agents.Debugger = {
     cb();
   },
 
+  setOverlayMessage: function(params, cb) {
+    if (params && params.message)
+      context.debuglog('SET OVERLAY MESSAGE', params.message);
+    else
+      context.debuglog('CLEAR OVERLAY MESSAGE');
+    cb();
+  },
+
   skipStackFrames: function(params, cb) {
     cb();
   },

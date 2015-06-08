@@ -208,6 +208,7 @@ context._STUBBED_RESPONSES = {
   'DOMStorage.enable': {},
   'Database.enable': {},
   'IndexedDB.enable': {},
+  'IndexedDB.requestDatabaseNames': { databaseNames: [] },
   'Inspector.enable': {},
   'Network.enable': {},
   'Page.canEmulate': { result: false },
@@ -281,7 +282,12 @@ context._handleFrontEndRequest = function(request, cb) {
   if (typeof method !== 'function')
     return cb('Unknown method ' + JSON.stringify(request.method));
 
-  method.call(this, request.params, cb);
+  try {
+    method.call(this, request.params, cb);
+  } catch (err) {
+    debuglog('Unhandled error in ' + request.method + '.\n', err.stack || err);
+    cb(err);
+  }
 };
 
 context._sendFrontEndMessage = function(msg) {
