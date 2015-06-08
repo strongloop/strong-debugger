@@ -22,7 +22,8 @@ exports.runUsing = function() {
 
 exports.waitForPendingSubTests = function() {
   return new Promise(function(resolve, reject) {
-    tap.current().test(function() {
+    tap.current().test(function(tt) {
+      tt.end();
       resolve();
     });
   });
