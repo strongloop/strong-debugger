@@ -37,10 +37,43 @@ Scenario.prototype.sendRequest = function(req) {
       });
     },
     inspect: function() {
-      return '(send request ' + inspect(req) + ')';
+      return '(send request #' + req.id + ' ' + inspect(req) + ')';
     }
   });
   return this;
+};
+
+Scenario.prototype.expectResponse = function(id, resultMatcher) {
+  if (arguments.length === 0) {
+    resultMatcher = m.isObject();
+    id = this.lastReqId;
+  } else if (arguments.length === 1) {
+    resultMatcher = id;
+    id = this.lastReqId;
+  }
+
+  this._commands.push({
+    run: function(client) {
+      return check();
+      function check() {
+        return client.receive().then(function(msg) {
+          if (!msg.hasOwnProperty('id') && msg.hasOwnProperty('method')) {
+            debuglog('EXPECT RESPONSE ignored server event');
+            return check();
+          }
+
+          tap.current().assertThat(
+            msg,
+            { id: id, result: resultMatcher },
+            'Receive response #' + id + ' that ' + inspect(resultMatcher));
+        });
+      }
+    },
+    inspect: function() {
+      return '(expect response #' + id + ' that ' +
+        inspect(resultMatcher) + ')';
+    }
+  });
 };
 
 Scenario.prototype.expectMessage = function(matcher) {
@@ -119,5 +152,5 @@ function resolveAllRefs(data) {
 
 Scenario.prototype.enableDebugger = function() {
   this.sendRequest({ method: 'Debugger.enable' });
-  this.expectMessage(m.containsProperties({ id: this.lastReqId }));
+  this.expectResponse();
 };

@@ -158,4 +158,25 @@ var convert = {
 
     return v8name;
   },
+
+  unwrapScript: function(sourceCode) {
+    // See NativeModule.wrapper in node's src/node.js
+    var PREFIX =
+      '(function (exports, require, module, __filename, __dirname) { ';
+    var POSTFIX = '\n});';
+
+    if (!startsWith(sourceCode, PREFIX)) return sourceCode;
+    if (!endsWith(sourceCode, POSTFIX)) return sourceCode;
+    return sourceCode.slice(PREFIX.length, -POSTFIX.length);
+
+    function startsWith(str, head) {
+      return str.length >= head.length &&
+             head === str.slice(0, head.length);
+    }
+
+    function endsWith(str, tail) {
+      return str.length >= tail.length &&
+             tail === str.slice(-tail.length, str.length);
+    }
+  },
 };
