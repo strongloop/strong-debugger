@@ -275,7 +275,7 @@ context._handleFrontEndRequest = function(request, cb) {
     return cb('Unknown agent ' + JSON.stringify(request.method));
   var agent = context.agents[agentName];
 
-  if (!agent.hasOwnProperty(methodName))
+  if (!agent.hasOwnProperty(methodName) || methodName[0] === '_')
     return cb('Unknown method ' + JSON.stringify(request.method));
 
   var method = agent[methodName];
@@ -283,7 +283,7 @@ context._handleFrontEndRequest = function(request, cb) {
     return cb('Unknown method ' + JSON.stringify(request.method));
 
   try {
-    method.call(this, request.params, cb);
+    method.call(agent, request.params, cb);
   } catch (err) {
     debuglog('Unhandled error in ' + request.method + '.\n', err.stack || err);
     cb(err);
@@ -301,7 +301,7 @@ context._sendFrontEndMessage = function(msg) {
  * @param {Object} params Method parameters - a named map argument:value.
  */
 context.sendFrontEndEvent = function(method, params) {
-  context._sendFrontEndMessage({ method: method, params: params });
+  context._sendFrontEndMessage({ method: method, params: params || {} });
 };
 
 /**

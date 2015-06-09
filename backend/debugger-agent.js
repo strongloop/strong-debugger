@@ -52,6 +52,24 @@ context.agents.Debugger = {
       });
   },
 
+  resume: function(params, cb) {
+    this._sendContinue(cb);
+  },
+
+  _sendContinue: function(stepAction, cb) {
+    if (cb === undefined && typeof stepAction === 'function') {
+      cb = stepAction;
+      stepAction = undefined;
+    }
+
+    var args = stepAction ? { stepaction: stepAction } : undefined;
+    context.sendDebuggerRequest('continue', args, function(err, result) {
+      cb(err);
+      if (!err)
+        context.sendFrontEndEvent('Debugger.resumed');
+    });
+  },
+
   setAsyncCallStackDepth: function(params, cb) {
     cb();
   },
