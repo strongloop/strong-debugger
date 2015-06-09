@@ -108,3 +108,27 @@ function getExpectedValue(expected) {
   }
   return res;
 }
+
+exports.recorder = function() {
+  return {
+    _values: {},
+    save: function(key, expected) {
+      var self = this;
+      return {
+        expectedValue: expected,
+        test: function(actual) {
+          self._values[key] = actual;
+          return test(actual, expected);
+        },
+        inspect: function() {
+          return inspect(expected);
+        }
+      };
+    },
+    get: function(key) {
+      return this._values.hasOwnProperty(key) ?
+        this._values[key] :
+        key + ' not found';
+    }
+  };
+};

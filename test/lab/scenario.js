@@ -8,6 +8,7 @@ module.exports = Scenario;
 
 function Scenario() {
   this._commands = [];
+  this._recorder = m.recorder();
   this.lastReqId = 0;
 }
 
@@ -30,6 +31,7 @@ Scenario.prototype.sendRequest = function(req) {
   }
   this._commands.push({
     run: function(client) {
+      resolveAllRefs(req);
       return client.send(req).then(function() {
         tap.current().pass('Send request ' + inspect(req));
       });
@@ -87,6 +89,33 @@ Scenario.prototype.sendInput = function(text) {
     }
   });
 };
+
+Scenario.prototype.saveRef = function(key, expected) {
+  return this._recorder.save(key, expected);
+};
+
+Scenario.prototype.ref = function(key) {
+  var s = this;
+  var result = function resolveReference() {
+    return s._recorder.get(key);
+  };
+  result.inspect = function() {
+    return '$REF(' + key + ') ' + inspect(result());
+  };
+  return result;
+};
+
+function resolveAllRefs(data) {
+  if (typeof data !== 'object' || data === null) return;
+  for (var k in data) {
+    var value = data[k];
+    if (typeof value === 'function' && value.name === 'resolveReference') {
+      data[k] = value();
+    } else {
+      resolveAllRefs(value);
+    }
+  }
+}
 
 Scenario.prototype.enableDebugger = function() {
   this.sendRequest({ method: 'Debugger.enable' });
