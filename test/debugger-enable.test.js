@@ -4,7 +4,12 @@ var m = require('./lab/matchers');
 l.runUsing(l.debugScript(l.fixture('periodic-break.js')), function(client) {
   return client.verifyScenario(function(s) {
     s.sendRequest({ id: 1, method:'Debugger.enable' });
-    s.expectMessage({ id: 1, result: {}});
+    s.expectResponse();
+    s.expectEvent('Debugger.scriptParsed', m.containsProperties({
+      scriptId: s.saveRef('scriptId', m.isString()),
+      url: /^file:.*test[\\\/]fixtures[\\\/]periodic-break.js/
+    }));
+    s.skipEvents('Debugger.scriptParsed');
     s.expectEvent('Debugger.paused', {
       callFrames: m.startsWith([
         {
@@ -13,7 +18,7 @@ l.runUsing(l.debugScript(l.fixture('periodic-break.js')), function(client) {
           location: m.containsProperties({
             lineNumber: 1,
             columnNumber: 2,
-            scriptId: m.isString() // script-id is specific to Node version
+            scriptId: s.ref('scriptId')
           }),
           functionName: '',
           callFrameId: '0'

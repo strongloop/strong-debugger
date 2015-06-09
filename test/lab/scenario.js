@@ -91,12 +91,62 @@ Scenario.prototype.expectMessage = function(matcher) {
   return this;
 };
 
-Scenario.prototype.expectEvent = function(method, paramMatcher) {
-  var matcher = {
-    method: method,
-    params: paramMatcher ? paramMatcher : m.isObject()
-  };
-  this.expectMessage(matcher);
+Scenario.prototype.expectEvent = function(method, paramsMatcher) {
+  if (!paramsMatcher) paramsMatcher = m.isObject();
+  var eventList = [];
+  this._commands.push({
+    run: function(client) {
+      return check();
+      function check(timeoutInMs) {
+        return client.receive(timeoutInMs).then(function(msg) {
+          eventList.push(msg);
+          if (msg.method === method && !m.test(msg.params, paramsMatcher))
+            return check(100);
+          assertEventInList();
+        }).catch(Promise.TimeoutError, function(err) {
+          assertEventInList();
+        });
+      }
+
+      function assertEventInList() {
+        tap.current().assertThat(
+          eventList,
+          m.hasMember({
+            method: method,
+            params: paramsMatcher
+          }),
+          'Receive event ' + method + ' with params ' +
+            inspect(paramsMatcher));
+      }
+    },
+    inspect: function() {
+      return '(expect event ' + method + ' with params ' +
+        inspect(paramsMatcher) + ')';
+    }
+  });
+};
+
+Scenario.prototype.skipEvents = function(method) {
+  this._commands.push({
+    run: function(client) {
+      return skip();
+      function skip() {
+        return client.receive(100).then(function(msg) {
+          if (msg.method === method) {
+            debuglog('skipped', msg);
+            return skip();
+          }
+          client.undoReceive(msg);
+          tap.current().pass('Skip all events ' + method);
+        }).catch(Promise.TimeoutError, function(err) {
+          debuglog('No more events to skip.');
+        });
+      }
+    },
+    inspect: function() {
+      return '(skip all events ' + method + ')';
+    }
+  });
 };
 
 Scenario.prototype.delay = function(timeInMs) {
@@ -135,6 +185,16 @@ Scenario.prototype.ref = function(key) {
   result.inspect = function() {
     return '$REF(' + key + ') ' + inspect(result());
   };
+
+  // matcher API
+  result.test = function(actual) {
+    return m.test(actual, result());
+  };
+
+  Object.defineProperty(result, 'expectedValue', {
+    get: function() { return result(); }
+  });
+
   return result;
 };
 
@@ -153,4 +213,5 @@ function resolveAllRefs(data) {
 Scenario.prototype.enableDebugger = function() {
   this.sendRequest({ method: 'Debugger.enable' });
   this.expectResponse();
+  this.skipEvents('Debugger.scriptParsed');
 };

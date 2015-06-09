@@ -2,7 +2,31 @@
 
 context.agents.Debugger = {
   enable: function(params, cb) {
-    context.enableDebugger(cb);
+    context.enableDebugger(function(err) {
+      if (err) return cb(err);
+      fetchLoadedScripts();
+    });
+
+    function fetchLoadedScripts() {
+      context.sendDebuggerRequest(
+        'scripts',
+        {
+          includeSource: false,
+          types: 4
+        },
+        function(err, list) {
+          if (err) return cb(err);
+
+          // Send back the response first
+          cb();
+
+          // Send "scriptParsed" events after the response
+          list.forEach(function(s) {
+            var data = convert.v8ScriptDataToDevToolsData(s);
+            context.sendFrontEndEvent('Debugger.scriptParsed', data);
+          });
+        });
+    }
   },
 
   disable: function(params, cb) {

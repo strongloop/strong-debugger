@@ -58,6 +58,21 @@ exports.startsWith = function(expected) {
   };
 };
 
+exports.hasMember = function(expected) {
+  return {
+    expectedValue: [expected],
+    test: function(actual) {
+      if (typeof actual !== 'object' || actual === null) return false;
+      return Object.keys(actual).some(function(ix) {
+        return test(actual[ix], expected);
+      });
+    },
+    inspect: function() {
+      return '(array containing item ' + inspect(expected) + ')';
+    },
+  };
+};
+
 tap.Test.prototype.addAssert('assertThat', 2,
 function(value, matcher, message, extra) {
   extra.found = value;
@@ -95,6 +110,7 @@ function test(actual, expected) {
     return false;
   return true;
 }
+exports.test = test;
 
 function getExpectedValue(expected) {
   if (typeof expected !== 'object' || expected === null)
