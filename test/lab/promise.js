@@ -6,3 +6,7 @@ Promise.waitForEvent = function(emitter, name) {
     emitter.once(name, resolve);
   });
 };
+
+Promise.onPossiblyUnhandledRejection(function(err) {
+  console.error('POSSIBLY UNHANDLED REJECTION', err);
+});

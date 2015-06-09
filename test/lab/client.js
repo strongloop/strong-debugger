@@ -41,6 +41,7 @@ function debugScript(scriptPath) {
         debuglog('CHILD STDERR %s', line);
         client.emit('stderr', line);
       }));
+      client.stdin = child.stdin;
     });
   }).disposer(function(client) {
     client.close();

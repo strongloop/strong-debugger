@@ -75,6 +75,19 @@ Scenario.prototype.delay = function(timeInMs) {
   });
 };
 
+Scenario.prototype.sendInput = function(text) {
+  text = String(text);
+  this._commands.push({
+    run: function(client) {
+      client.stdin.write(text);
+      return Promise.resolve();
+    },
+    inspect: function() {
+      return '(send input ' + JSON.stringify(text) + ')';
+    }
+  });
+};
+
 Scenario.prototype.enableDebugger = function() {
   this.sendRequest({ method: 'Debugger.enable' });
   this.expectMessage(m.containsProperties({ id: this.lastReqId }));

@@ -45,6 +45,12 @@ context.eventHandlers.break = function(event) {
   });
 };
 
+context.eventHandlers.afterCompile = function(event) {
+  context.debuglog('after compile', event);
+  var data = convert.v8ScriptDataToDevToolsData(event.body.script);
+  context.sendFrontEndEvent('Debugger.scriptParsed', data);
+};
+
 context.fetchCallFrames = function(cb) {
   context.sendDebuggerRequest(
     'backtrace',

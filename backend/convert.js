@@ -51,6 +51,22 @@ var convert = {
     return String(scriptId);
   },
 
+  v8ScriptDataToDevToolsData: function(v8data) {
+    return {
+      scriptId: convert.v8ScriptIdToDevToolsId(v8data.id),
+      url: convert.v8NameToDevToolsUrl(v8data.name),
+      startLine: v8data.lineOffset,
+      startColumn: v8data.columnOffset
+
+      /* Properties not set:
+       endLine: undefined,
+       endColumn: undefined,
+       isContentScript: undefined,
+       hasSourceURL: undefined,
+       */
+    };
+  },
+
   v8RefToDevToolsObject: function(ref) {
     var desc = '';
     var type = ref.type;
