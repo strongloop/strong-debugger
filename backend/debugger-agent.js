@@ -1,4 +1,4 @@
-/* global context:false, convert:false */
+/* global context:false, convert:false, NODE_MODULE_VERSION:false */
 
 context.agents.Debugger = {
   enable: function(params, cb) {
@@ -107,10 +107,18 @@ context.eventHandlers.break = function(event) {
 };
 
 context.eventHandlers.afterCompile = function(event) {
-  context.debuglog('after compile', event);
   var data = convert.v8ScriptDataToDevToolsData(event.body.script);
   context.sendFrontEndEvent('Debugger.scriptParsed', data);
 };
+
+// Workaround for Node v0.12 reporting compileError instead of afterCompile
+if (NODE_MODULE_VERSION === 14) {
+  context.eventHandlers.compileError = function(event) {
+    if (event.body.script && event.body.script.hasOwnProperty('id')) {
+      context.eventHandlers.afterCompile(event);
+    }
+  };
+}
 
 context.fetchCallFrames = function(cb) {
   context.sendDebuggerRequest(

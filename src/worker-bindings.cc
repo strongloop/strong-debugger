@@ -71,6 +71,9 @@ const char* Worker::InitIsolate() {
 
   Local<ObjectTemplate> global_templ = NanNew<ObjectTemplate>();
   global_templ->Set(NanNew("bindings"), bindings_templ);
+  global_templ->Set(
+    NanNew("NODE_MODULE_VERSION"),
+    NanNew(NODE_MODULE_VERSION));
 
   ExtensionConfiguration* ext = NULL;
 #if NODE_VERSION_AT_LEAST(0, 11, 0)
