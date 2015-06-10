@@ -1,6 +1,9 @@
 #ifndef DEBUGGER_COMPAT_H
 #define DEBUGGER_COMPAT_H
 
+#include <assert.h>
+#include <uv.h>
+
 namespace strongloop {
 
 template<typename T, size_t N> size_t ArraySize(const T (&)[N]) { return N; }

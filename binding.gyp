@@ -3,6 +3,7 @@
     {
       "target_name": "debugger",
       "sources": [
+        "src/mutex-wrap.cc",
         "src/debugger.cc",
         "src/controller.cc",
         "src/worker.cc",

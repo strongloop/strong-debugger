@@ -49,12 +49,11 @@ void Worker::Start(uint16_t port) {
   if (err) goto error;
   err = AsyncInit(&disable_response_signal_, &Worker::DisableResponseSignalCb);
   if (err) goto error;
-  err = AsyncInit(&debugger_messages_signal_, &Worker::DebuggerMessageSignalCb);
-  if (err) goto error;
 
-  err = UvResult(uv_mutex_init(&debugger_messages_lock_));
+  err = debugger_messages_.Init(event_loop_,
+                                this,
+                                &Worker::DebuggerMessageSignalCb);
   if (err) goto error;
-  debugger_messages_list_.clear();
 
   client_connected_ = false;
 
@@ -92,7 +91,7 @@ error:
 void Worker::MasterCleanup() {
   enable_response_signal_.CloseIfInitialized();
   disable_response_signal_.CloseIfInitialized();
-  debugger_messages_signal_.CloseIfInitialized();
+  debugger_messages_.CloseIfInitialized();
   server_.CloseIfInitialized(NULL);
 
   if (isolate_) {
@@ -114,10 +113,7 @@ void Worker::SignalDisableResponse() {
 }
 
 void Worker::HandleDebuggerMessage(const char* message) {
-  uv_mutex_lock(&debugger_messages_lock_);
-  debugger_messages_list_.push_back(message);
-  uv_mutex_unlock(&debugger_messages_lock_);
-  debugger_messages_signal_.Send();
+  debugger_messages_.PushBack(message);
 }
 
 /***** PRIVATE METHODS *****/
@@ -271,15 +267,11 @@ void Worker::DisableResponseSignalCb() {
 }
 
 void Worker::DebuggerMessageSignalCb() {
-  uv_mutex_lock(&debugger_messages_lock_);
-  while (!debugger_messages_list_.empty()) {
-    std::string msg(debugger_messages_list_.front());
-    debugger_messages_list_.pop_front();
-    uv_mutex_unlock(&debugger_messages_lock_);
-    EmitScriptEvent("onDebuggerMessage", msg.c_str());
-    uv_mutex_lock(&debugger_messages_lock_);
+  for (;;) {
+    MaybeValue<std::string> msg(debugger_messages_.PopFront());
+    if (!msg.has_value) break;
+    EmitScriptEvent("onDebuggerMessage", msg.value.c_str());
   }
-  uv_mutex_unlock(&debugger_messages_lock_);
 }
 
 

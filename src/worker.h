@@ -4,9 +4,9 @@
 #include <vector>
 #include <uv.h>
 #include <nan.h>
-#include <deque>
 #include "async-wrap.h"
 #include "tcp-wrap.h"
+#include "locked-queue.h"
 #include "incoming-connection.h"
 
 namespace strongloop {
@@ -91,9 +91,7 @@ class Worker {
     AsyncWrap<Worker> enable_response_signal_;
     AsyncWrap<Worker> disable_response_signal_;
 
-    AsyncWrap<Worker> debugger_messages_signal_;
-    std::deque<std::string> debugger_messages_list_;
-    uv_mutex_t debugger_messages_lock_;
+    LockedQueue<std::string, Worker> debugger_messages_;
 
     TcpWrap<Worker> server_;
     IncomingConnection<Worker> client_;
