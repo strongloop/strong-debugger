@@ -159,6 +159,18 @@ var convert = {
     return v8name;
   },
 
+  devToolsUrlToV8Name: function(url) {
+    var path = url.replace(/^file:\/\//, '');
+    if (/^\/[a-zA-Z]:\//.test(path))
+      return path.substring(1).replace(/\//g, '\\'); // Windows disk path
+    if (/^\//.test(path))
+      return path; // UNIX-style
+    if (/^file:\/\//.test(url))
+      return '\\\\' + path.replace(/\//g, '\\'); // Windows UNC path
+
+    return url;
+  },
+
   unwrapScript: function(sourceCode) {
     // See NativeModule.wrapper in node's src/node.js
     var PREFIX =
