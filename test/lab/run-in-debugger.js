@@ -1,3 +1,4 @@
+'use strict';
 var target = process.argv[2];
 if (!target) {
   console.log('Usage:');

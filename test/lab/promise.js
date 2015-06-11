@@ -1,3 +1,4 @@
+'use strict';
 /* Use Bluebird as the Promise implementation */
 var Promise = module.exports = require('bluebird');
 

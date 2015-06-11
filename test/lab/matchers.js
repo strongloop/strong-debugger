@@ -1,3 +1,4 @@
+'use strict';
 var inspect = require('util').inspect;
 var tap = require('tap');
 

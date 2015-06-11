@@ -1,3 +1,4 @@
+'use strict';
 var l = require('./lab');
 
 var A_LONG_RUNNING_SCRIPT = 'http-server.js';

@@ -1,3 +1,4 @@
+'use strict';
 var fork = require('child_process').fork;
 var net = require('net');
 var WebSocket = require('ws');
