@@ -1,3 +1,5 @@
+'use strict';
+
 // Based on NodeInspector's lib/convert.js
 var convert = {
   v8FrameToDevToolsFrame: function(frame, refs) {

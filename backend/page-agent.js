@@ -1,3 +1,4 @@
+'use strict';
 /* global context:false, convert:false */
 
 context.agents.Page = {

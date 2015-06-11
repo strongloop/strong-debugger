@@ -1,3 +1,4 @@
+'use strict';
 var Promise = require('./promise');
 var net = require('net');
 var inherits = require('util').inherits;

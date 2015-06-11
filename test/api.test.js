@@ -1,3 +1,4 @@
+'use strict';
 var l = require('./lab');
 var expect = l.expect;
 var dbg = require('../');

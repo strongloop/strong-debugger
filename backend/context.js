@@ -1,3 +1,4 @@
+'use strict';
 /*
 Methods provided by the C++ bindings
   bindings.sendFrontEndMessage(string)

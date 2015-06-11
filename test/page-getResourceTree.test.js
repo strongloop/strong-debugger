@@ -1,3 +1,4 @@
+'use strict';
 var l = require('./lab');
 var m = l.matchers;
 

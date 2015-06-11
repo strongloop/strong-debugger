@@ -1,3 +1,4 @@
+'use strict';
 /* Lab: a laboratory for running automated tests */
 var path = require('path');
 

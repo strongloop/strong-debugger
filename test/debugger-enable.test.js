@@ -1,3 +1,4 @@
+'use strict';
 var l = require('./lab');
 var m = require('./lab/matchers');
 
@@ -16,7 +17,7 @@ l.runUsing(l.debugScript(l.fixture('periodic-break.js')), function(client) {
           'this': m.isObject(),
           scopeChain: m.isObject(),
           location: m.containsProperties({
-            lineNumber: 1,
+            lineNumber: 2,
             columnNumber: 2,
             scriptId: s.ref('scriptId')
           }),

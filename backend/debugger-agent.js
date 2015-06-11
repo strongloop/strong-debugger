@@ -1,3 +1,4 @@
+'use strict';
 /* global context:false, convert:false, NODE_MODULE_VERSION:false */
 
 context.agents.Debugger = {

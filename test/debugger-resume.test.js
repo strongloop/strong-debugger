@@ -1,3 +1,4 @@
+'use strict';
 var l = require('./lab');
 
 l.runUsing(l.debugScript(l.fixture('periodic-logger.js')), function(client) {
