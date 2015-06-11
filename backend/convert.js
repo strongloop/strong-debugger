@@ -51,6 +51,22 @@ var convert = {
     return String(scriptId);
   },
 
+  v8ScriptDataToDevToolsData: function(v8data) {
+    return {
+      scriptId: convert.v8ScriptIdToDevToolsId(v8data.id),
+      url: convert.v8NameToDevToolsUrl(v8data.name),
+      startLine: v8data.lineOffset,
+      startColumn: v8data.columnOffset
+
+      /* Properties not set:
+       endLine: undefined,
+       endColumn: undefined,
+       isContentScript: undefined,
+       hasSourceURL: undefined,
+       */
+    };
+  },
+
   v8RefToDevToolsObject: function(ref) {
     var desc = '';
     var type = ref.type;
@@ -141,5 +157,38 @@ var convert = {
     }
 
     return v8name;
+  },
+
+  devToolsUrlToV8Name: function(url) {
+    var path = url.replace(/^file:\/\//, '');
+    if (/^\/[a-zA-Z]:\//.test(path))
+      return path.substring(1).replace(/\//g, '\\'); // Windows disk path
+    if (/^\//.test(path))
+      return path; // UNIX-style
+    if (/^file:\/\//.test(url))
+      return '\\\\' + path.replace(/\//g, '\\'); // Windows UNC path
+
+    return url;
+  },
+
+  unwrapScript: function(sourceCode) {
+    // See NativeModule.wrapper in node's src/node.js
+    var PREFIX =
+      '(function (exports, require, module, __filename, __dirname) { ';
+    var POSTFIX = '\n});';
+
+    if (!startsWith(sourceCode, PREFIX)) return sourceCode;
+    if (!endsWith(sourceCode, POSTFIX)) return sourceCode;
+    return sourceCode.slice(PREFIX.length, -POSTFIX.length);
+
+    function startsWith(str, head) {
+      return str.length >= head.length &&
+             head === str.slice(0, head.length);
+    }
+
+    function endsWith(str, tail) {
+      return str.length >= tail.length &&
+             tail === str.slice(-tail.length, str.length);
+    }
   },
 };

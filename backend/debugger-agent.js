@@ -1,12 +1,73 @@
-/* global context:false, convert:false */
+/* global context:false, convert:false, NODE_MODULE_VERSION:false */
 
 context.agents.Debugger = {
   enable: function(params, cb) {
-    context.enableDebugger(cb);
+    context.enableDebugger(function(err) {
+      if (err) return cb(err);
+      fetchLoadedScripts();
+    });
+
+    function fetchLoadedScripts() {
+      context.sendDebuggerRequest(
+        'scripts',
+        {
+          includeSource: false,
+          types: 4
+        },
+        function(err, list) {
+          if (err) return cb(err);
+
+          // Send back the response first
+          cb();
+
+          // Send "scriptParsed" events after the response
+          list.forEach(function(s) {
+            var data = convert.v8ScriptDataToDevToolsData(s);
+            context.sendFrontEndEvent('Debugger.scriptParsed', data);
+          });
+        });
+    }
   },
 
   disable: function(params, cb) {
     context.disableDebugger(cb);
+  },
+
+  getScriptSource: function(params, cb) {
+    context.sendDebuggerRequest(
+      'scripts',
+      {
+        includeSource: true,
+        types: 4,
+        ids: [params.scriptId]
+      },
+      function(err, result) {
+        if (err) return cb(err);
+        // Some modules gets unloaded (?) after they are parsed,
+        // e.g. node_modules/express/node_modules/methods/index.js
+        // V8 request 'scripts' returns an empty result in such case
+        var source = result.length > 0 ? result[0].source : undefined;
+        source = source && convert.unwrapScript(source);
+        cb(null, { scriptSource: source });
+      });
+  },
+
+  resume: function(params, cb) {
+    this._sendContinue(cb);
+  },
+
+  _sendContinue: function(stepAction, cb) {
+    if (cb === undefined && typeof stepAction === 'function') {
+      cb = stepAction;
+      stepAction = undefined;
+    }
+
+    var args = stepAction ? { stepaction: stepAction } : undefined;
+    context.sendDebuggerRequest('continue', args, function(err, result) {
+      cb(err);
+      if (!err)
+        context.sendFrontEndEvent('Debugger.resumed');
+    });
   },
 
   setAsyncCallStackDepth: function(params, cb) {
@@ -14,6 +75,14 @@ context.agents.Debugger = {
   },
 
   setPauseOnExceptions: function(params, cb) {
+    cb();
+  },
+
+  setOverlayMessage: function(params, cb) {
+    if (params && params.message)
+      context.debuglog('SET OVERLAY MESSAGE', params.message);
+    else
+      context.debuglog('CLEAR OVERLAY MESSAGE');
     cb();
   },
 
@@ -36,6 +105,20 @@ context.eventHandlers.break = function(event) {
     });
   });
 };
+
+context.eventHandlers.afterCompile = function(event) {
+  var data = convert.v8ScriptDataToDevToolsData(event.body.script);
+  context.sendFrontEndEvent('Debugger.scriptParsed', data);
+};
+
+// Workaround for Node v0.12 reporting compileError instead of afterCompile
+if (NODE_MODULE_VERSION === 14) {
+  context.eventHandlers.compileError = function(event) {
+    if (event.body.script && event.body.script.hasOwnProperty('id')) {
+      context.eventHandlers.afterCompile(event);
+    }
+  };
+}
 
 context.fetchCallFrames = function(cb) {
   context.sendDebuggerRequest(

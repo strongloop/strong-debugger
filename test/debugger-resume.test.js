@@ -8,8 +8,9 @@ l.runUsing(l.debugScript(l.fixture('periodic-logger.js')), function(client) {
         s.enableDebugger();
         s.expectEvent('Debugger.paused');
         s.delay(200);
-        s.sendRequest({ method: 'Debugger.disable' });
+        s.sendRequest({ method: 'Debugger.resume' });
         s.expectResponse();
+        s.expectEvent('Debugger.resumed');
       });
     })
     .then(waitForClientStdout)

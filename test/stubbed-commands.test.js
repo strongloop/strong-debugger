@@ -9,6 +9,7 @@ l.runUsing(l.debugScript(l.fixture(A_LONG_RUNNING_SCRIPT)), function(client) {
   verifyResponseForRequest('Page.enable', {});
   verifyResponseForRequest('Debugger.setPauseOnExceptions', {});
   verifyResponseForRequest('Debugger.setAsyncCallStackDepth', {});
+  verifyResponseForRequest('Debugger.setOverlayMessage', { message: 'x' }, {});
   verifyResponseForRequest('Debugger.skipStackFrames', {});
   verifyResponseForRequest('Runtime.enable', {});
   verifyResponseForRequest('DOM.enable', {});
@@ -28,13 +29,21 @@ l.runUsing(l.debugScript(l.fixture(A_LONG_RUNNING_SCRIPT)), function(client) {
   verifyResponseForRequest('Page.canEmulate', { result: false });
   verifyResponseForRequest('Worker.canInspectWorkers', { result: false });
 
+  verifyResponseForRequest('IndexedDB.requestDatabaseNames', {
+    databaseNames: []
+  });
+
   return l.waitForPendingSubTests();
 
-  function verifyResponseForRequest(method, expectedResult) {
+  function verifyResponseForRequest(method, params, expectedResult) {
+    if (arguments.length === 2) {
+      expectedResult = params;
+      params = undefined;
+    }
     l.describe(method, function() {
       ++reqId;
       return client.verifyScenario(function(s) {
-        s.sendRequest({ id: reqId, method: method });
+        s.sendRequest({ id: reqId, method: method, params: params });
         s.expectMessage({ id: reqId, result: expectedResult });
       });
     });

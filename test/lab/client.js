@@ -41,6 +41,7 @@ function debugScript(scriptPath) {
         debuglog('CHILD STDERR %s', line);
         client.emit('stderr', line);
       }));
+      client.stdin = child.stdin;
     });
   }).disposer(function(client) {
     client.close();
@@ -103,25 +104,36 @@ Client.prototype._setupClientConnection = function() {
   });
 };
 
-Client.prototype.receive = function() {
+Client.prototype.receive = function(timeoutInMs) {
   var self = this;
+  if (self._messagesReceived.length) {
+    return Promise.resolve(self._messagesReceived.shift());
+  }
+
+  if (!timeoutInMs) timeoutInMs = 1000;
+
+  var onMessage;
+  var onError;
   return new Promise(function(resolve, reject) {
-    if (self._messagesReceived.length) {
+    onMessage = function() {
       return resolve(self._messagesReceived.shift());
-    }
+    };
+    onError = reject;
+
     self.once('message', onMessage);
     self.once('error', onError);
+  })
+  .timeout(timeoutInMs,
+    'client.receive() timed out after ' + timeoutInMs + 'ms')
+  .finally(function() {
+    self.removeListener('error', onError);
+    self.removeListener('message', onMessage);
+  });
+};
 
-    function onMessage() {
-      self.removeListener('error', onError);
-      return resolve(self._messagesReceived.shift());
-    }
-
-    function onError(err) {
-      self.removeListener('message', onMessage);
-      reject(err);
-    }
-  }).timeout(1000, 'client.receive() timed out after 1s');
+Client.prototype.undoReceive = function(msg) {
+  this._messagesReceived.unshift(msg);
+  return Promise.resolve();
 };
 
 Client.prototype.close = function() {

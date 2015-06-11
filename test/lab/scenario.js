@@ -8,6 +8,7 @@ module.exports = Scenario;
 
 function Scenario() {
   this._commands = [];
+  this._recorder = m.recorder();
   this.lastReqId = 0;
 }
 
@@ -23,19 +24,56 @@ Scenario.prototype.run = function(client) {
 };
 
 Scenario.prototype.sendRequest = function(req) {
-  var id = ++this.lastReqId;
-  if (!req.id) { req.id = id; }
+  if (req.id) {
+    if (req.id > this.lastReqId) this.lastReqId = req.id;
+  } else {
+    req.id = ++this.lastReqId;
+  }
   this._commands.push({
     run: function(client) {
+      resolveAllRefs(req);
       return client.send(req).then(function() {
         tap.current().pass('Send request ' + inspect(req));
       });
     },
     inspect: function() {
-      return '(send request ' + inspect(req) + ')';
+      return '(send request #' + req.id + ' ' + inspect(req) + ')';
     }
   });
   return this;
+};
+
+Scenario.prototype.expectResponse = function(id, resultMatcher) {
+  if (arguments.length === 0) {
+    resultMatcher = m.isObject();
+    id = this.lastReqId;
+  } else if (arguments.length === 1) {
+    resultMatcher = id;
+    id = this.lastReqId;
+  }
+
+  this._commands.push({
+    run: function(client) {
+      return check();
+      function check() {
+        return client.receive().then(function(msg) {
+          if (!msg.hasOwnProperty('id') && msg.hasOwnProperty('method')) {
+            debuglog('EXPECT RESPONSE ignored server event');
+            return check();
+          }
+
+          tap.current().assertThat(
+            msg,
+            { id: id, result: resultMatcher },
+            'Receive response #' + id + ' that ' + inspect(resultMatcher));
+        });
+      }
+    },
+    inspect: function() {
+      return '(expect response #' + id + ' that ' +
+        inspect(resultMatcher) + ')';
+    }
+  });
 };
 
 Scenario.prototype.expectMessage = function(matcher) {
@@ -53,12 +91,62 @@ Scenario.prototype.expectMessage = function(matcher) {
   return this;
 };
 
-Scenario.prototype.expectEvent = function(method, paramMatcher) {
-  var matcher = {
-    method: method,
-    params: paramMatcher ? paramMatcher : m.isObject()
-  };
-  this.expectMessage(matcher);
+Scenario.prototype.expectEvent = function(method, paramsMatcher) {
+  if (!paramsMatcher) paramsMatcher = m.isObject();
+  var eventList = [];
+  this._commands.push({
+    run: function(client) {
+      return check();
+      function check(timeoutInMs) {
+        return client.receive(timeoutInMs).then(function(msg) {
+          eventList.push(msg);
+          if (msg.method === method && !m.test(msg.params, paramsMatcher))
+            return check(100);
+          assertEventInList();
+        }).catch(Promise.TimeoutError, function(err) {
+          assertEventInList();
+        });
+      }
+
+      function assertEventInList() {
+        tap.current().assertThat(
+          eventList,
+          m.hasMember({
+            method: method,
+            params: paramsMatcher
+          }),
+          'Receive event ' + method + ' with params ' +
+            inspect(paramsMatcher));
+      }
+    },
+    inspect: function() {
+      return '(expect event ' + method + ' with params ' +
+        inspect(paramsMatcher) + ')';
+    }
+  });
+};
+
+Scenario.prototype.skipEvents = function(method) {
+  this._commands.push({
+    run: function(client) {
+      return skip();
+      function skip() {
+        return client.receive(100).then(function(msg) {
+          if (msg.method === method) {
+            debuglog('skipped', msg);
+            return skip();
+          }
+          client.undoReceive(msg);
+          tap.current().pass('Skip all events ' + method);
+        }).catch(Promise.TimeoutError, function(err) {
+          debuglog('No more events to skip.');
+        });
+      }
+    },
+    inspect: function() {
+      return '(skip all events ' + method + ')';
+    }
+  });
 };
 
 Scenario.prototype.delay = function(timeInMs) {
@@ -70,4 +158,60 @@ Scenario.prototype.delay = function(timeInMs) {
       return '(wait ' + timeInMs + 'ms)';
     }
   });
+};
+
+Scenario.prototype.sendInput = function(text) {
+  text = String(text);
+  this._commands.push({
+    run: function(client) {
+      client.stdin.write(text);
+      return Promise.resolve();
+    },
+    inspect: function() {
+      return '(send input ' + JSON.stringify(text) + ')';
+    }
+  });
+};
+
+Scenario.prototype.saveRef = function(key, expected) {
+  return this._recorder.save(key, expected);
+};
+
+Scenario.prototype.ref = function(key) {
+  var s = this;
+  var result = function resolveReference() {
+    return s._recorder.get(key);
+  };
+  result.inspect = function() {
+    return '$REF(' + key + ') ' + inspect(result());
+  };
+
+  // matcher API
+  result.test = function(actual) {
+    return m.test(actual, result());
+  };
+
+  Object.defineProperty(result, 'expectedValue', {
+    get: function() { return result(); }
+  });
+
+  return result;
+};
+
+function resolveAllRefs(data) {
+  if (typeof data !== 'object' || data === null) return;
+  for (var k in data) {
+    var value = data[k];
+    if (typeof value === 'function' && value.name === 'resolveReference') {
+      data[k] = value();
+    } else {
+      resolveAllRefs(value);
+    }
+  }
+}
+
+Scenario.prototype.enableDebugger = function() {
+  this.sendRequest({ method: 'Debugger.enable' });
+  this.expectResponse();
+  this.skipEvents('Debugger.scriptParsed');
 };

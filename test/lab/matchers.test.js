@@ -108,3 +108,32 @@ tap.test('startsWith', function(tt) {
 
   tt.end();
 });
+
+tap.test('hasMember', function(tt) {
+  tt.assertThat(
+    [1, 2, 3],
+    m.hasMember(2),
+    'accepts number item');
+
+  tt.assertNotThat(
+    [1, 2, 3],
+    m.hasMember(5),
+    'rejects number item');
+
+  tt.assertNotThat(
+    null,
+    m.hasMember(5),
+    'handles expected value "null"');
+
+  tt.assertThat(
+    [{ k: 'v1', e: 'e1' }, { k: 'v2', e: 'e2' }],
+    m.hasMember(m.containsProperties({ k: 'v2' })),
+    'accepts matcher');
+
+  tt.assertNotThat(
+    [{ k: 'v1', e: 'e1' }, { k: 'v2', e: 'e2' }],
+    m.hasMember(m.containsProperties({ k: 'v3' })),
+    'rejects matcher');
+
+  tt.end();
+});
