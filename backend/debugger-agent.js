@@ -57,6 +57,18 @@ context.agents.Debugger = {
     this._sendContinue(cb);
   },
 
+  stepOver: function(params, cb) {
+    this._sendContinue('next', cb);
+  },
+
+  stepInto: function(params, cb) {
+    this._sendContinue('in', cb);
+  },
+
+  stepOut: function(params, cb) {
+    this._sendContinue('out', cb);
+  },
+
   _sendContinue: function(stepAction, cb) {
     if (cb === undefined && typeof stepAction === 'function') {
       cb = stepAction;
