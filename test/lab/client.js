@@ -8,6 +8,7 @@ var newlineJson = require('newline-json');
 var debuglog = require('./debuglog');
 var Scenario = require('./scenario');
 var split = require('split');
+var convert = require('./convert');
 
 exports.debugScript = debugScript;
 
@@ -55,6 +56,7 @@ function Client(conn, debugee) {
   this._conn = conn;
   this._debugee = debugee;
   this._messagesReceived = [];
+  this._scriptLookup = Object.create(null);
 
   this._setupClientConnection();
   this.on('message', function(msg) {
@@ -108,7 +110,7 @@ Client.prototype._setupClientConnection = function() {
 Client.prototype.receive = function(timeoutInMs) {
   var self = this;
   if (self._messagesReceived.length) {
-    return Promise.resolve(self._messagesReceived.shift());
+    return Promise.resolve(self._shiftReceivedMessage());
   }
 
   if (!timeoutInMs) timeoutInMs = 1000;
@@ -117,7 +119,7 @@ Client.prototype.receive = function(timeoutInMs) {
   var onError;
   return new Promise(function(resolve, reject) {
     onMessage = function() {
-      return resolve(self._messagesReceived.shift());
+      return resolve(self._shiftReceivedMessage());
     };
     onError = reject;
 
@@ -130,6 +132,15 @@ Client.prototype.receive = function(timeoutInMs) {
     self.removeListener('error', onError);
     self.removeListener('message', onMessage);
   });
+};
+
+Client.prototype._shiftReceivedMessage = function() {
+  var msg = this._messagesReceived.shift();
+  if (msg.method === 'Debugger.scriptParsed' && msg.params) {
+    var scriptPath = convert.devToolsUrlToV8Name(msg.params.url);
+    this._scriptLookup[scriptPath] = msg.params.scriptId;
+  }
+  return msg;
 };
 
 Client.prototype.undoReceive = function(msg) {
@@ -158,4 +169,8 @@ Client.prototype.verifyScenario = function(builder) {
     builder(scenario);
     resolve(scenario.run(client));
   });
+};
+
+Client.prototype.findScriptByName = function(fullPath) {
+  return this._scriptLookup[fullPath];
 };

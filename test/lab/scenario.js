@@ -11,9 +11,12 @@ function Scenario() {
   this._commands = [];
   this._recorder = m.recorder();
   this.lastReqId = 0;
+  this._client = null;
 }
 
 Scenario.prototype.run = function(client) {
+  var self = this;
+  this._client = client;
   return this._commands.reduce(
     function(cur, next) {
       return cur.then(function() {
@@ -21,7 +24,10 @@ Scenario.prototype.run = function(client) {
         return next.run(client);
       });
     },
-    Promise.resolve());
+    Promise.resolve())
+  .finally(function() {
+    self._client = null;
+  });
 };
 
 Scenario.prototype.sendRequest = function(req) {
@@ -197,6 +203,50 @@ Scenario.prototype.ref = function(key) {
   });
 
   return result;
+};
+
+Scenario.prototype.refScriptIdByName = function(fullPath) {
+  var s = this;
+
+  var result = function resolveReference() {
+    var id = s._client.findScriptByName(fullPath);
+    return id !== undefined ? id : 'Unknown script ' + fullPath;
+  };
+
+  result.inspect = function() {
+    var id = s._client.findScriptByName(fullPath);
+    var desc = '$SCRIPT_ID(' + fullPath + ')';
+    if (id !== undefined) desc = id + ' ' + desc;
+    return desc;
+  };
+
+  // matcher API
+  result.test = function(actual) {
+    return m.test(actual, result());
+  };
+
+  Object.defineProperty(result, 'expectedValue', {
+    get: function() {
+      return result();
+    }
+  });
+
+  return result;
+};
+
+Scenario.prototype.expectDebuggerPausedAt = function(scriptPath, lineIndex) {
+  var s = this;
+  s.skipEvents('Debugger.scriptParsed');
+  s.expectEvent('Debugger.paused', m.containsProperties({
+    callFrames: m.startsWith([
+      m.containsProperties({
+        location: m.containsProperties({
+          lineNumber: lineIndex,
+          scriptId: s.refScriptIdByName(scriptPath)
+        }),
+      }),
+    ]),
+  }));
 };
 
 function resolveAllRefs(data) {

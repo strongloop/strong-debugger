@@ -1,6 +1,5 @@
 'use strict';
 /* Lab: a laboratory for running automated tests */
-var path = require('path');
 
 exports.Promise = require('./promise');
 
@@ -13,12 +12,7 @@ exports.runUsing = tap.runUsing;
 exports.waitForPendingSubTests = tap.waitForPendingSubTests;
 
 exports.expect = require('./expect');
-
-exports.fixture = function(name) {
-  return path.resolve(__dirname, '..', 'fixtures', name);
-};
-
+exports.fixture = require('./fixture');
 exports.debugScript = require('./client').debugScript;
-
 exports.debuglog = require('./debuglog');
 exports.matchers = require('./matchers');

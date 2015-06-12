@@ -18,6 +18,10 @@ exports.isObject = function() {
   return exports.hasValueOfType('object');
 };
 
+exports.isNumber = function() {
+  return exports.hasValueOfType('number');
+};
+
 exports.isString = function() {
   return exports.hasValueOfType('string');
 };
@@ -114,10 +118,11 @@ function test(actual, expected) {
 exports.test = test;
 
 function getExpectedValue(expected) {
+  // allow functions to provide a custom expectedValue too
+  if (expected && expected.expectedValue)
+    return getExpectedValue(expected.expectedValue);
   if (typeof expected !== 'object' || expected === null)
     return expected;
-  if (expected.expectedValue)
-    return getExpectedValue(expected.expectedValue);
 
   var res = new (expected.constructor)();
   for (var k in expected) {

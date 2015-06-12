@@ -19,6 +19,7 @@
   },
   "excludeFiles": [
     "node_modules/**",
-    "coverage/**"
+    "coverage/**",
+    "test/fixtures/generated-*.js"
   ]
 }
