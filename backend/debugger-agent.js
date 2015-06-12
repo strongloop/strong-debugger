@@ -53,6 +53,16 @@ context.agents.Debugger = {
       });
   },
 
+  pause: function(params, cb) {
+    context.sendDebuggerRequest('suspend', {}, function(err, result) {
+      if (err) return cb(err);
+      // Send back the response first
+      cb();
+      // Send back "Debugger.paused" event afterwards
+      context.sendDebuggerPaused();
+    });
+  },
+
   resume: function(params, cb) {
     this._sendContinue(cb);
   },
@@ -106,17 +116,7 @@ context.agents.Debugger = {
 
 context.eventHandlers.break = function(event) {
   context.debuglog('on break', event);
-  context.fetchCallFrames(function(err, frames) {
-    if (err) return context.reportError(err);
-
-    context.sendFrontEndEvent('Debugger.paused', {
-      callFrames: frames,
-      // TODO: support reason:'expection' with data:exception ref
-      reason: 'other',
-      data: null, // TODO: include event.exception if set
-      // TODO: hitBreakpoints: event.hitBreakpoints - needs a test
-    });
-  });
+  context.sendDebuggerPaused();
 };
 
 context.eventHandlers.afterCompile = function(event) {
@@ -149,4 +149,18 @@ context.fetchCallFrames = function(cb) {
       });
       cb(null, frames);
     });
+};
+
+context.sendDebuggerPaused = function(cb) {
+  context.fetchCallFrames(function(err, frames) {
+    if (err) return context.reportError(err);
+
+    context.sendFrontEndEvent('Debugger.paused', {
+      callFrames: frames,
+      // TODO: support reason:'expection' with data:exception ref
+      reason: 'other',
+      data: null, // TODO: include event.exception if set
+      // TODO: hitBreakpoints: event.hitBreakpoints - needs a test
+    });
+  });
 };

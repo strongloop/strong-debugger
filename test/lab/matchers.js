@@ -18,6 +18,10 @@ exports.isObject = function() {
   return exports.hasValueOfType('object');
 };
 
+exports.isNumber = function() {
+  return exports.hasValueOfType('number');
+};
+
 exports.isString = function() {
   return exports.hasValueOfType('string');
 };
