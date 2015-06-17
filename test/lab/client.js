@@ -71,7 +71,9 @@ function Client(conn, debugee) {
   self._debugee.on('exit', function(code, signal) {
     debuglog('Debugee exited code=%s signal=%s', code, signal);
     if (code) {
-      self.emit('error', new Error('Debugee exited with ' + code));
+      var err = new Error('Debugee exited with ' + code);
+      err.exitCode = code;
+      self.emit('error', err);
     } else {
       self.emit('child-exit');
     }
@@ -125,7 +127,10 @@ Client.prototype.receive = function(timeoutInMs) {
     onMessage = function() {
       return resolve(self._shiftReceivedMessage());
     };
-    onError = reject;
+    onError = function(err) {
+      err.message = 'Cannot receive debugger message. ' + err.message;
+      reject(err);
+    };
 
     self.once('message', onMessage);
     self.once('error', onError);

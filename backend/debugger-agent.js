@@ -61,7 +61,7 @@ context.agents.Debugger = {
       // Send back the response first
       cb();
       // Send back "Debugger.paused" event afterwards
-      context.sendDebuggerPaused();
+      context.notifyDebuggerPaused();
     });
   },
 
@@ -186,7 +186,20 @@ context.agents.Debugger = {
   },
 
   setPauseOnExceptions: function(params, cb) {
-    cb();
+    context.waitForDebuggerEnabled(function() {
+      var args = [
+        { type: 'all', enabled: params.state === 'all' },
+        { type: 'uncaught', enabled: params.state === 'uncaught' }
+      ];
+      next();
+
+      function next(err, res) {
+        if (err) return cb(err);
+        if (!args.length) return cb(); // ignore any results
+        var req = args.shift();
+        context.sendDebuggerRequest('setexceptionbreak', req, next);
+      }
+    });
   },
 
   setOverlayMessage: function(params, cb) {
@@ -202,12 +215,11 @@ context.agents.Debugger = {
   },
 };
 
+context.eventHandlers.exception =
 context.eventHandlers.break = function(event) {
-  context.debuglog('on break', event);
-
   var tempBpId = context.agents.Debugger._continueToLocationBreakpointId;
   if (!tempBpId) {
-    context.sendDebuggerPaused();
+    context.notifyDebuggerPaused(event);
     return;
   }
 
@@ -217,7 +229,7 @@ context.eventHandlers.break = function(event) {
     } else {
       context.agents.Debugger._continueToLocationBreakpointId = null;
     }
-    context.sendDebuggerPaused();
+    context.notifyDebuggerPaused(event);
   });
 };
 
@@ -253,15 +265,15 @@ context.fetchCallFrames = function(cb) {
     });
 };
 
-context.sendDebuggerPaused = function(cb) {
+context.notifyDebuggerPaused = function(event) {
+  var exception = event && event.body && event.body.exception;
   context.fetchCallFrames(function(err, frames) {
     if (err) return context.reportError(err);
 
     context.sendFrontEndEvent('Debugger.paused', {
       callFrames: frames,
-      // TODO: support reason:'expection' with data:exception ref
-      reason: 'other',
-      data: null, // TODO: include event.exception if set
+      reason: exception ? 'exception' : 'other',
+      data: exception ? convert.v8RefToDevToolsObject(exception) : null,
       // TODO: hitBreakpoints: event.hitBreakpoints - needs a test
     });
   });
