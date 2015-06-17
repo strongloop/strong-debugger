@@ -56,11 +56,15 @@ function Client(conn, debugee) {
   this._conn = conn;
   this._debugee = debugee;
   this._messagesReceived = [];
+  this._stdoutChunks = [];
   this._scriptLookup = Object.create(null);
 
   this._setupClientConnection();
   this.on('message', function(msg) {
     this._messagesReceived.push(msg);
+  });
+  this.on('stdout', function(data) {
+    this._stdoutChunks.push(data);
   });
 
   var self = this;
@@ -141,6 +145,33 @@ Client.prototype._shiftReceivedMessage = function() {
     this._scriptLookup[scriptPath] = msg.params.scriptId;
   }
   return msg;
+};
+
+Client.prototype.readStdOut = function(timeoutInMs) {
+  var self = this;
+  if (self._stdoutChunks.length) {
+    return Promise.resolve(self._stdoutChunks.shift());
+  }
+
+  if (!timeoutInMs) timeoutInMs = 1000;
+
+  var onData;
+  var onError;
+  return new Promise(function(resolve, reject) {
+    onData = function() {
+      return resolve(self._stdoutChunks.shift());
+    };
+    onError = reject;
+
+    self.once('stdout', onData);
+    self.once('error', onError);
+  })
+  .timeout(timeoutInMs,
+    'client.readStdOut() timed out after ' + timeoutInMs + 'ms')
+  .finally(function() {
+    self.removeListener('error', onError);
+    self.removeListener('message', onData);
+  });
 };
 
 Client.prototype.undoReceive = function(msg) {

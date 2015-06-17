@@ -53,6 +53,18 @@ var convert = {
     return String(scriptId);
   },
 
+  devToolsScriptIdToV8Id: function(scriptId) {
+    return Number(scriptId);
+  },
+
+  v8BreakpointIdToDevToolsId: function(bpId) {
+    return String(bpId);
+  },
+
+  devToolsBreakpointIdToV8Id: function(bpId) {
+    return Number(bpId);
+  },
+
   v8ScriptDataToDevToolsData: function(v8data) {
     return {
       scriptId: convert.v8ScriptIdToDevToolsId(v8data.id),
@@ -171,6 +183,15 @@ var convert = {
       return '\\\\' + path.replace(/\//g, '\\'); // Windows UNC path
 
     return url;
+  },
+
+  v8LocationToDevToolsLocation: function(v8loc) {
+    // jscs:disable requireCamelCaseOrUpperCaseIdentifiers
+    return {
+      scriptId: convert.v8ScriptIdToDevToolsId(v8loc.script_id),
+      lineNumber: v8loc.line,
+      columnNumber: v8loc.column
+    };
   },
 
   unwrapScript: function(sourceCode) {

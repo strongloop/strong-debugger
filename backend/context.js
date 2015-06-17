@@ -137,7 +137,9 @@ context.sendDebuggerRequest = function(cmd, args, cb) {
 };
 
 bindings.onDebuggerMessage = function(data) {
-  debuglog('V8 debugger message received', data);
+  debuglog('V8 debugger message received',
+    data.slice(0, Math.min(255, data.length)),
+    data.length > 255 ? '(...)' : '');
 
   var msg;
   try {

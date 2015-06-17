@@ -2,6 +2,8 @@
 /* global context:false, convert:false, NODE_MODULE_VERSION:false */
 
 context.agents.Debugger = {
+  _continueToLocationBreakpointId: null,
+
   enable: function(params, cb) {
     context.enableDebugger(function(err) {
       if (err) return cb(err);
@@ -93,6 +95,92 @@ context.agents.Debugger = {
     });
   },
 
+  continueToLocation: function(params, cb) {
+    var self = this;
+    context.sendDebuggerRequest(
+      'setbreakpoint',
+      {
+        type: 'scriptId',
+        target: convert.devToolsScriptIdToV8Id(params.location.scriptId),
+        line: params.location.lineNumber,
+        column: params.location.columnNumber
+      },
+      function(err, result) {
+        if (err) return cb(err);
+        self._continueToLocationBreakpointId = result.breakpoint;
+        self._sendContinue(undefined, function(err) {
+          cb(err);
+        });
+      });
+  },
+
+  setBreakpointByUrl: function(params, cb) {
+    if (params.urlRegex !== undefined) {
+      // DevTools protocol defines urlRegex parameter,
+      // but the parameter is not used by the front-end.
+      return cb(
+        'Error: setBreakpointByUrl using urlRegex is not implemented.');
+    }
+
+    var target = convert.devToolsUrlToV8Name(params.url);
+    var req = {
+      type: 'script',
+      target: target,
+      line: params.lineNumber,
+      column: params.columnNumber,
+      condition: params.condition
+    };
+
+    context.sendDebuggerRequest('setbreakpoint', req, function(err, result) {
+      if (err) return cb(err);
+
+      // jscs:disable requireCamelCaseOrUpperCaseIdentifiers
+      var locations = result.actual_locations
+        .map(convert.v8LocationToDevToolsLocation);
+      // jscs:enable requireCamelCaseOrUpperCaseIdentifiers
+
+      cb(null, {
+        breakpointId: convert.v8BreakpointIdToDevToolsId(result.breakpoint),
+        locations: locations
+      });
+    });
+  },
+
+  removeBreakpoint: function(params, cb) {
+    this._clearBreakpoint(
+      convert.devToolsBreakpointIdToV8Id(params.breakpointId),
+      function(err, result) {
+        cb(err); // ignore the result, send back an empty response
+      });
+  },
+
+  _clearBreakpoint: function(id, cb) {
+    context.sendDebuggerRequest(
+      'clearbreakpoint',
+      { breakpoint: id },
+      cb);
+  },
+
+  setBreakpointsActive: function(params, cb) {
+    context.sendDebuggerRequest(
+      'listbreakpoints',
+      {},
+      function(err, result) {
+        if (err) return cb(err);
+
+        var bps = result.breakpoints;
+        next();
+
+        function next(err, res) {
+          if (err) return cb(err);
+          if (!bps.length) return cb();
+          var bp = bps.shift();
+          var req = { breakpoint: bp.number, enabled: params.active };
+          context.sendDebuggerRequest('changebreakpoint', req, next);
+        }
+      });
+  },
+
   setAsyncCallStackDepth: function(params, cb) {
     cb();
   },
@@ -116,7 +204,21 @@ context.agents.Debugger = {
 
 context.eventHandlers.break = function(event) {
   context.debuglog('on break', event);
-  context.sendDebuggerPaused();
+
+  var tempBpId = context.agents.Debugger._continueToLocationBreakpointId;
+  if (!tempBpId) {
+    context.sendDebuggerPaused();
+    return;
+  }
+
+  context.agents.Debugger._clearBreakpoint(tempBpId, function(err, result) {
+    if (err) {
+      context.debuglog('Cannot clear temporary breakpoint.', err.stack || err);
+    } else {
+      context.agents.Debugger._continueToLocationBreakpointId = null;
+    }
+    context.sendDebuggerPaused();
+  });
 };
 
 context.eventHandlers.afterCompile = function(event) {

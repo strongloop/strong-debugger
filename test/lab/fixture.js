@@ -17,7 +17,9 @@ function getFixturePath(nameOrFn) {
 }
 
 function createFixture(fn) {
-  var fname = 'generated-' + (fn.name || 'anonymous') + '.js';
+  var testName = path.basename(require.main.filename,
+        '.test' + path.extname(require.main.filename));
+  var fname = 'generated-' + testName + '.js';
   var fullpath = getFixturePath(fname);
   var content = fn.toString()
     .replace(/^function\s*[a-zA-Z_]*\([^\)]*\)\s*{[\r\n]*/m, '')

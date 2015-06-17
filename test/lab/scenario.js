@@ -180,6 +180,37 @@ Scenario.prototype.sendInput = function(text) {
   });
 };
 
+Scenario.prototype.waitForStdOut = function(matcher) {
+  if (!matcher) matcher = m.isString();
+  var dataList = [];
+  this._commands.push({
+    run: function(client) {
+      return check();
+      function check(timeoutInMs) {
+        return client.readStdOut(timeoutInMs).then(function(data) {
+          data = data.toString();
+          dataList.push(data);
+          if (!m.test(data, matcher))
+            return check(100);
+          assertDataInList();
+        }).catch(Promise.TimeoutError, function(err) {
+          assertDataInList();
+        });
+      }
+
+      function assertDataInList() {
+        tap.current().assertThat(
+          dataList,
+          m.hasMember(matcher),
+          'Receive stdout data ' + inspect(matcher));
+      }
+    },
+    inspect: function() {
+      return '(wait for stdout ' + inspect(matcher) + ')';
+    }
+  });
+};
+
 Scenario.prototype.saveRef = function(key, expected) {
   return this._recorder.save(key, expected);
 };
@@ -265,4 +296,10 @@ Scenario.prototype.enableDebugger = function() {
   this.sendRequest({ method: 'Debugger.enable' });
   this.expectResponse();
   this.skipEvents('Debugger.scriptParsed');
+};
+
+Scenario.prototype.resume = function() {
+  this.sendRequest({ method: 'Debugger.resume' });
+  this.expectResponse();
+  this.expectEvent('Debugger.resumed');
 };
