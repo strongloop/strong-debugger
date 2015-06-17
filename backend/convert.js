@@ -144,6 +144,43 @@ var convert = {
     };
   },
 
+  v8ErrorToDevToolsError: function(err) {
+    var message = err.message || err.toString();
+    var name = err.name || 'Error';
+    // Try to match the error name in 'ErrorName: error message'
+    var match = /^([^:]+):/.exec(message);
+    if (match) name = match[1];
+
+    return {
+      type: 'object',
+      objectId: 'ERROR',
+      className: name,
+      description: message
+    };
+  },
+
+  v8ResultToDevToolsResult: function(result) {
+    var subtype;
+
+    if (['object', 'function', 'regexp', 'error'].indexOf(result.type) > -1) {
+      return convert.v8RefToDevToolsObject(result);
+    }
+
+    if (result.type === 'null') {
+      // workaround for the problem with front-end's setVariableValue
+      // implementation not preserving null type
+      result.value = null;
+      subtype = 'null';
+    }
+
+    return {
+      type: result.type,
+      subtype: subtype,
+      value: result.value,
+      description: String(result.value)
+    };
+  },
+
   // Conversions between v8 file paths and node-inspector urls
   // Kind      Path            Url
   // UNIX      /dir/app.js     file:///dir/app.js

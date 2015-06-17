@@ -202,6 +202,26 @@ context.agents.Debugger = {
     });
   },
 
+  evaluateOnCallFrame: function(params, cb) {
+    context.sendDebuggerRequest(
+      'evaluate',
+      {
+        expression: params.expression,
+        frame: Number(params.callFrameId)
+      },
+      function(err, result) {
+        // Errors from V8 are actually just messages,
+        // so we need to fill them out a bit.
+        if (err) err = convert.v8ErrorToDevToolsError(err);
+
+        cb(null, {
+          result: err || convert.v8ResultToDevToolsResult(result),
+          wasThrown: !!err
+        });
+      }
+    );
+  },
+
   setOverlayMessage: function(params, cb) {
     if (params && params.message)
       context.debuglog('SET OVERLAY MESSAGE', params.message);
