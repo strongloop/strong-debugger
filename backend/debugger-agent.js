@@ -222,6 +222,23 @@ context.agents.Debugger = {
     );
   },
 
+  getFunctionDetails: function(params, cb) {
+    var handle = Number(params.functionId);
+    context.sendDebuggerRequest(
+      'lookup',
+      {
+        handles: [handle],
+        includeSource: false
+      },
+      function(err, responseBody) {
+        if (err) return cb(err);
+        var data = responseBody[handle] || responseBody;
+        var result = convert.v8FunctionLookupToFunctionDetails(data);
+        cb(null, result);
+      }
+    );
+  },
+
   setOverlayMessage: function(params, cb) {
     if (params && params.message)
       context.debuglog('SET OVERLAY MESSAGE', params.message);

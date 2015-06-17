@@ -251,4 +251,24 @@ var convert = {
              tail === str.slice(-tail.length, str.length);
     }
   },
+
+  v8FunctionLookupToFunctionDetails: function(handleData) {
+    return {
+      details: {
+        location: {
+          scriptId: String(handleData.scriptId),
+          lineNumber: handleData.line,
+          columnNumber: handleData.column
+        },
+        functionName: handleData.name || handleData.inferredName,
+
+        // There is a list of scope ids in responseBody.scopes, but not scope
+        // details :(
+        // We need to issue `scopes` request to fetch scopes details,
+        // but we don't have frame number where the function was defined.
+        // Let's leave the scopeChain empty for now.
+        scopeChain: []
+      }
+    };
+  },
 };
