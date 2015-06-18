@@ -239,6 +239,25 @@ context.agents.Debugger = {
     );
   },
 
+  setVariableValue: function(params, cb) {
+    var value = convert.devToolsValueToV8Value(params.newValue);
+
+    context.sendDebuggerRequest(
+      'setVariableValue',
+      {
+        name: params.variableName,
+        scope: {
+          number: Number(params.scopeNumber),
+          frameNumber: Number(params.callFrameId)
+        },
+        newValue: value
+      },
+      function(err, result) {
+        cb(err); // ignore the result
+      }
+    );
+  },
+
   setOverlayMessage: function(params, cb) {
     if (params && params.message)
       context.debuglog('SET OVERLAY MESSAGE', params.message);

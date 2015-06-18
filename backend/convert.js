@@ -181,6 +181,14 @@ var convert = {
     };
   },
 
+  devToolsValueToV8Value: function(value) {
+    if (value.value === undefined && value.objectId === undefined)
+      return { type: 'undefined' };
+    if (value.objectId)
+      return { handle: Number(value.objectId) };
+    return value;
+  },
+
   // Conversions between v8 file paths and node-inspector urls
   // Kind      Path            Url
   // UNIX      /dir/app.js     file:///dir/app.js
