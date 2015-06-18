@@ -23,13 +23,7 @@ var SCRIPT_UNDER_TEST = l.fixture(function() {
 });
 
 l.runUsing(l.debugScript(SCRIPT_UNDER_TEST), function(client) {
-  client.on('error', function(err) {
-    if (err.exitCode === 8 || err.exitCode === 1)  {
-      l.debuglog('Ignoring expected error:', err.message);
-      return; // unhandled error - this is expected
-    }
-    throw err;
-  });
+  client.ignoreDebuggeeCrash();
 
   return client.verifyScenario(function(s) {
     s.sendRequest({ id: 1, method: 'Debugger.setPauseOnExceptions', params: {
@@ -65,5 +59,7 @@ l.runUsing(l.debugScript(SCRIPT_UNDER_TEST), function(client) {
         type: 'object',
       }
     }));
+
+    s.resume();
   });
 });

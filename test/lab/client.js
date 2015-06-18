@@ -35,9 +35,19 @@ function debugScript(scriptPath) {
       if (msg.cmd != 'DEBUGGER_LISTENING') return;
       var port = msg.port;
 
+      var onReady = function() {
+        client.removeListener('error', onError);
+        resolve(this);
+      };
+
+      var onError = function(err) {
+        client.removeListener('ready', onReady);
+        reject(err);
+      };
+
       var client = new Client(net.connect(port), child)
-        .on('ready', function() { resolve(this); })
-        .on('error', function(err) { reject(err); });
+        .on('ready', onReady)
+        .on('error', onError);
 
       child.stdout.pipe(new split().on('data', function(line) {
         debuglog('CHILD STDOUT %s', line);
@@ -74,9 +84,10 @@ function Client(conn, debugee) {
   var self = this;
   self._debugee.on('exit', function(code, signal) {
     debuglog('Debugee exited code=%s signal=%s', code, signal);
-    if (code) {
-      var err = new Error('Debugee exited with ' + code);
+    if (code || signal) {
+      var err = new Error('Debugee exited with ' + (code || signal));
       err.exitCode = code;
+      err.exitSignal = signal;
       self.emit('error', err);
     } else {
       self.emit('child-exit');
@@ -217,4 +228,18 @@ Client.prototype.verifyScenario = function(builder) {
 
 Client.prototype.findScriptByName = function(fullPath) {
   return this._scriptLookup[fullPath];
+};
+
+Client.prototype.ignoreDebuggeeCrash = function() {
+  this.on('error', function(err) {
+    if (err.exitCode === 8 || err.exitCode === 1)  {
+      debuglog('Ignoring expected error:', err.message);
+      return; // unhandled error - this is expected
+    }
+    if (err.code === 'ECONNRESET') {
+      debuglog('Ignoring expected ECONNRESET error:', err.message);
+      return;
+    }
+    throw err;
+  });
 };
