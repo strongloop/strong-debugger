@@ -36,6 +36,12 @@ void AsyncWrap<T>::Unref() {
 }
 
 template<class T>
+void AsyncWrap<T>::Ref() {
+  if (!handle_.data) return;
+  uv_ref(reinterpret_cast<uv_handle_t*>(&handle_));
+}
+
+template<class T>
 void AsyncWrap<T>::CloseIfInitialized() {
   // TODO(bajtos) protect against concurrent call of Send() from ThreadA
   // and CloseIfInitialized() from threadB
@@ -48,12 +54,14 @@ template<class T>
 void AsyncWrap<T>::Send() {
   // TODO(bajtos) protect against concurrent call of Send() from ThreadA
   // and CloseIfInitialized() from threadB
+  if (!handle_.data) return;
   uv_async_send(&handle_);
 }
 
 template<class T>
 void AsyncWrap<T>::SendCb(uv_async_t* handle) {
   AsyncWrap<T>* self = static_cast<AsyncWrap<T>*>(handle->data);
+  if (!self) return;
   Callback cb = self->callback_;
   (self->target_->*cb)();
 }

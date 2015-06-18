@@ -37,12 +37,14 @@ class LockedQueue {
                         ItemsAvailableCallback callback);
 
     inline void CloseIfInitialized();
+    inline void Ref();
+    inline void Unref();
 
     inline void PushBack(const T& item);
     inline MaybeValue<T> PopFront();
   private:
     AsyncWrap<R> signal_;
-    std::deque<std::string> list_;
+    std::deque<T> list_;
     MutexWrap lock_;
 };
 

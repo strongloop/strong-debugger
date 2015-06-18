@@ -9,6 +9,14 @@ if (!target) {
 // Init the debugger module
 var port = +process.argv[3] || 0;
 var dbg = require('../..');
+
+process.on('message', function(msg) {
+  if (msg.cmd !== 'STOP') return;
+  dbg.stop(function() {
+    process.send({ cmd: 'DEBUGGER_STOPPED' });
+  });
+});
+
 dbg.start(port, function(err, port) {
   if (err) throw err;
 

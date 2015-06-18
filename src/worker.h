@@ -48,11 +48,12 @@ class Worker {
     void Enable();
     void Disable();
     const char* InitIsolate();
-    void MasterCleanup();
+    void Cleanup();
 
     void EnableResponseSignalCb();
     void DisableResponseSignalCb();
     void DebuggerMessageSignalCb();
+    void StopSignalCb();
 
     void ServerConnectionCb(TcpWrap<Worker>* server);
 
@@ -83,6 +84,8 @@ class Worker {
     const char* start_result_;
     uint16_t server_port_;
 
+    AtomicBool running_;
+
     Isolate* isolate_;
     Persistent<Context> context_;
     uv_loop_t* event_loop_;
@@ -90,6 +93,7 @@ class Worker {
 
     AsyncWrap<Worker> enable_response_signal_;
     AsyncWrap<Worker> disable_response_signal_;
+    AsyncWrap<Worker> stop_signal_;
 
     LockedQueue<std::string, Worker> debugger_messages_;
 

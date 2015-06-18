@@ -12,5 +12,6 @@ function() {
   return dbg.startAsync(0)
     .then(function(port) {
       expect(port).to.not.equal(0);
+      return dbg.stopAsync();
     });
 });

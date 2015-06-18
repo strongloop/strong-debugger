@@ -33,6 +33,16 @@ static void StartCallback(const char* err, uint16_t port, void* data) {
   delete js_callback;
 }
 
+static void StopCallback(void* data) {
+  NanScope();
+
+  NanCallback* js_callback = static_cast<NanCallback*>(data);
+
+  js_callback->Call(0, NULL);
+
+  delete js_callback;
+}
+
 NAN_METHOD(Start) {
   if (!args[0]->IsObject()) {
    return NanThrowTypeError(
@@ -91,9 +101,16 @@ NAN_METHOD(Start) {
 }
 
 NAN_METHOD(Stop) {
+  if (!args[0]->IsFunction()) {
+    return NanThrowError("You must supply a callback argument.");
+  }
+
   Local<Function> callback = args[0].As<Function>();
-  Controller::GetInstance(v8::Isolate::GetCurrent())->Stop();
-  NanMakeCallback(NanGetCurrentContext()->Global(), callback, 0, NULL);
+  NanCallback* js_callback = new NanCallback(callback);
+
+  Controller* controller = Controller::GetInstance(args.GetIsolate());
+  controller->Stop(StopCallback, js_callback);
+
   NanReturnUndefined();
 }
 

@@ -28,6 +28,10 @@ function debugScript(scriptPath) {
         JSON.stringify(Array.prototype.slice.call(arguments))));
     });
     child.on('message', function(msg) {
+      if (msg.cmd === 'DEBUGGER_STOPPED') {
+        return debuglog('DEBUGGER STOPPED');
+      }
+
       if (msg.cmd != 'DEBUGGER_LISTENING') return;
       var port = msg.port;
 
@@ -40,7 +44,7 @@ function debugScript(scriptPath) {
         client.emit('stdout', line);
       }));
       child.stderr.pipe(new split().on('data', function(line) {
-        debuglog('CHILD STDERR %s', line);
+        if (line.trim()) console.error('CHILD STDERR', line);
         client.emit('stderr', line);
       }));
       client.stdin = child.stdin;
@@ -90,6 +94,10 @@ Client.prototype._setupClientConnection = function() {
   });
 
   self._conn.on('connect', function() {
+    self._conn.on('end', function() {
+      debuglog('DEBUGGER CONNECTION CLOSED');
+    });
+
     var reader = new (newlineJson.Parser)();
     reader.on('error', function(err) {
       debuglog('DBG ERR %s', err);
