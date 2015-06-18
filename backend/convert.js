@@ -144,6 +144,51 @@ var convert = {
     };
   },
 
+  v8ErrorToDevToolsError: function(err) {
+    var message = err.message || err.toString();
+    var name = err.name || 'Error';
+    // Try to match the error name in 'ErrorName: error message'
+    var match = /^([^:]+):/.exec(message);
+    if (match) name = match[1];
+
+    return {
+      type: 'object',
+      objectId: 'ERROR',
+      className: name,
+      description: message
+    };
+  },
+
+  v8ResultToDevToolsResult: function(result) {
+    var subtype;
+
+    if (['object', 'function', 'regexp', 'error'].indexOf(result.type) > -1) {
+      return convert.v8RefToDevToolsObject(result);
+    }
+
+    if (result.type === 'null') {
+      // workaround for the problem with front-end's setVariableValue
+      // implementation not preserving null type
+      result.value = null;
+      subtype = 'null';
+    }
+
+    return {
+      type: result.type,
+      subtype: subtype,
+      value: result.value,
+      description: String(result.value)
+    };
+  },
+
+  devToolsValueToV8Value: function(value) {
+    if (value.value === undefined && value.objectId === undefined)
+      return { type: 'undefined' };
+    if (value.objectId)
+      return { handle: Number(value.objectId) };
+    return value;
+  },
+
   // Conversions between v8 file paths and node-inspector urls
   // Kind      Path            Url
   // UNIX      /dir/app.js     file:///dir/app.js
@@ -213,5 +258,25 @@ var convert = {
       return str.length >= tail.length &&
              tail === str.slice(-tail.length, str.length);
     }
+  },
+
+  v8FunctionLookupToFunctionDetails: function(handleData) {
+    return {
+      details: {
+        location: {
+          scriptId: String(handleData.scriptId),
+          lineNumber: handleData.line,
+          columnNumber: handleData.column
+        },
+        functionName: handleData.name || handleData.inferredName,
+
+        // There is a list of scope ids in responseBody.scopes, but not scope
+        // details :(
+        // We need to issue `scopes` request to fetch scopes details,
+        // but we don't have frame number where the function was defined.
+        // Let's leave the scopeChain empty for now.
+        scopeChain: []
+      }
+    };
   },
 };

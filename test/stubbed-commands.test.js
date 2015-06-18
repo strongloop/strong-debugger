@@ -8,7 +8,6 @@ l.runUsing(l.debugScript(l.fixture(A_LONG_RUNNING_SCRIPT)), function(client) {
   verifyResponseForRequest('Console.enable', {});
   verifyResponseForRequest('Network.enable', {});
   verifyResponseForRequest('Page.enable', {});
-  verifyResponseForRequest('Debugger.setPauseOnExceptions', {});
   verifyResponseForRequest('Debugger.setAsyncCallStackDepth', {});
   verifyResponseForRequest('Debugger.setOverlayMessage', { message: 'x' }, {});
   verifyResponseForRequest('Debugger.skipStackFrames', {});

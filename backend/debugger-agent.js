@@ -61,7 +61,7 @@ context.agents.Debugger = {
       // Send back the response first
       cb();
       // Send back "Debugger.paused" event afterwards
-      context.sendDebuggerPaused();
+      context.notifyDebuggerPaused();
     });
   },
 
@@ -186,7 +186,76 @@ context.agents.Debugger = {
   },
 
   setPauseOnExceptions: function(params, cb) {
-    cb();
+    context.waitForDebuggerEnabled(function() {
+      var args = [
+        { type: 'all', enabled: params.state === 'all' },
+        { type: 'uncaught', enabled: params.state === 'uncaught' }
+      ];
+      next();
+
+      function next(err, res) {
+        if (err) return cb(err);
+        if (!args.length) return cb(); // ignore any results
+        var req = args.shift();
+        context.sendDebuggerRequest('setexceptionbreak', req, next);
+      }
+    });
+  },
+
+  evaluateOnCallFrame: function(params, cb) {
+    context.sendDebuggerRequest(
+      'evaluate',
+      {
+        expression: params.expression,
+        frame: Number(params.callFrameId)
+      },
+      function(err, result) {
+        // Errors from V8 are actually just messages,
+        // so we need to fill them out a bit.
+        if (err) err = convert.v8ErrorToDevToolsError(err);
+
+        cb(null, {
+          result: err || convert.v8ResultToDevToolsResult(result),
+          wasThrown: !!err
+        });
+      }
+    );
+  },
+
+  getFunctionDetails: function(params, cb) {
+    var handle = Number(params.functionId);
+    context.sendDebuggerRequest(
+      'lookup',
+      {
+        handles: [handle],
+        includeSource: false
+      },
+      function(err, responseBody) {
+        if (err) return cb(err);
+        var data = responseBody[handle] || responseBody;
+        var result = convert.v8FunctionLookupToFunctionDetails(data);
+        cb(null, result);
+      }
+    );
+  },
+
+  setVariableValue: function(params, cb) {
+    var value = convert.devToolsValueToV8Value(params.newValue);
+
+    context.sendDebuggerRequest(
+      'setVariableValue',
+      {
+        name: params.variableName,
+        scope: {
+          number: Number(params.scopeNumber),
+          frameNumber: Number(params.callFrameId)
+        },
+        newValue: value
+      },
+      function(err, result) {
+        cb(err); // ignore the result
+      }
+    );
   },
 
   setOverlayMessage: function(params, cb) {
@@ -202,12 +271,11 @@ context.agents.Debugger = {
   },
 };
 
+context.eventHandlers.exception =
 context.eventHandlers.break = function(event) {
-  context.debuglog('on break', event);
-
   var tempBpId = context.agents.Debugger._continueToLocationBreakpointId;
   if (!tempBpId) {
-    context.sendDebuggerPaused();
+    context.notifyDebuggerPaused(event);
     return;
   }
 
@@ -217,7 +285,7 @@ context.eventHandlers.break = function(event) {
     } else {
       context.agents.Debugger._continueToLocationBreakpointId = null;
     }
-    context.sendDebuggerPaused();
+    context.notifyDebuggerPaused(event);
   });
 };
 
@@ -253,15 +321,15 @@ context.fetchCallFrames = function(cb) {
     });
 };
 
-context.sendDebuggerPaused = function(cb) {
+context.notifyDebuggerPaused = function(event) {
+  var exception = event && event.body && event.body.exception;
   context.fetchCallFrames(function(err, frames) {
     if (err) return context.reportError(err);
 
     context.sendFrontEndEvent('Debugger.paused', {
       callFrames: frames,
-      // TODO: support reason:'expection' with data:exception ref
-      reason: 'other',
-      data: null, // TODO: include event.exception if set
+      reason: exception ? 'exception' : 'other',
+      data: exception ? convert.v8RefToDevToolsObject(exception) : null,
       // TODO: hitBreakpoints: event.hitBreakpoints - needs a test
     });
   });
