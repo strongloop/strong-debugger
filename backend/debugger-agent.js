@@ -217,6 +217,7 @@ context.agents.Debugger = {
         cb(null, {
           result: err || convert.v8ResultToDevToolsResult(result),
           wasThrown: !!err
+          // TODO(bajtos) Fill in exceptionDetails on error
         });
       }
     );
