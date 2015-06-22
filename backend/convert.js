@@ -189,6 +189,59 @@ var convert = {
     return value;
   },
 
+  v8ObjectToDevToolsProperties: function(obj, refs, options) {
+    var proto = obj.protoObject;
+    var props = obj.properties || [];
+    var ownProperties = options.ownProperties;
+    var accessorPropertiesOnly = options.accessorPropertiesOnly;
+
+    props = props.map(function(prop) {
+      var ref = refs[prop.ref];
+      return {
+          name: String(prop.name),
+          writable: !(prop.attributes & 1 << 0),
+          enumerable: !(prop.attributes & 1 << 1),
+          configurable: !(prop.attributes & 1 << 2),
+          value: convert.v8ResultToDevToolsResult(ref),
+          isOwn: true // lookup always returns own properties only
+        };
+    });
+
+    // TODO(bajtos) In the recent V8 versions, the __proto__ property
+    // should be returned only when
+    //   ownProperties === false && accessorPropertiesOnly === true
+    // because it's defined via getter/setter functions
+
+    var shouldAddProto = ownProperties && proto &&
+      !props.some(function(p) { return p.name === '__proto__'; });
+
+    if (shouldAddProto) {
+      proto = refs[proto.ref];
+      if (proto.type !== 'undefined') {
+        props.push({
+          name: '__proto__',
+          value: convert.v8RefToDevToolsObject(proto),
+          writable: true,
+          configurable: true,
+          enumerable: false,
+          isOwn: true
+        });
+      }
+    }
+
+    props = props.filter(function(prop) {
+      // Node.js does not return get/set property descriptors now (v0.11.11),
+      //  therefore we can't fully implement 'accessorPropertiesOnly'.
+      // See https://github.com/joyent/node/issues/7139
+      var isAccessorProperty = ('get' in prop || 'set' in prop);
+      return accessorPropertiesOnly ?
+        isAccessorProperty :
+        !isAccessorProperty;
+    });
+
+    return props;
+  },
+
   // Conversions between v8 file paths and node-inspector urls
   // Kind      Path            Url
   // UNIX      /dir/app.js     file:///dir/app.js
