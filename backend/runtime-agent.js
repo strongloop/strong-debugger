@@ -86,4 +86,118 @@ context.agents.Runtime = {
         cb(null, { result: props });
       });
   },
+
+  callFunctionOn: function(params, cb) {
+    var self = this;
+    var returnByValue = params.returnByValue;
+
+    this._createEvaluateParamsForFnCall(
+      params.objectId,
+      params.functionDeclaration,
+      params.arguments,
+      function callFunctionWithParams(err, evaluateParams) {
+        if (err) return cb(err);
+
+        context.sendDebuggerRequest(
+          'evaluate',
+          evaluateParams,
+          function(err, result) {
+            self._handleCallFnOnObjectResponse(
+              err, result, returnByValue, cb);
+          });
+      });
+  },
+
+  _createEvaluateParamsForFnCall: function(selfId, declaration, args, cb) {
+    args = args || [];
+
+    try {
+      var argsData = args.map(this._getFunctionCallArgsData, this);
+      var params = this._buildEvaluateParamsFromArgsData(
+        selfId,
+        declaration,
+        argsData);
+      cb(null, params);
+    } catch (err) {
+      cb(err);
+    }
+  },
+
+  _buildEvaluateParamsFromArgsData: function(selfId, declaration, argsData) {
+    argsData = [this._getSelfArgData(selfId)].concat(argsData);
+
+    var argNames = argsData.map(function(a) { return a.code; });
+    var argContexts = argsData
+      .map(function(a) { return a.context; })
+      // filter out empty contexts (value types are context-less)
+      .filter(function(c) { return !!c; });
+
+    var expression = '(' + declaration + ').call(' + argNames.join(', ') + ')';
+
+    return {
+      expression: expression,
+      global: true,
+      // jscs:disable requireCamelCaseOrUpperCaseIdentifiers
+      additional_context: argContexts
+      // jscs:enable requireCamelCaseOrUpperCaseIdentifiers
+    };
+  },
+
+  _getSelfArgData: function(selfId) {
+    var SELF_CONTEXT_NAME = '__strong_debugger_self__';
+    return {
+      code: SELF_CONTEXT_NAME,
+      context: {
+        name: SELF_CONTEXT_NAME,
+        handle: Number(selfId)
+      }
+    };
+  },
+
+  _getFunctionCallArgsData: function(arg, index) {
+    var uniqueId = '__strong_debugger_arg' + index;
+    switch (arg.type) {
+      case undefined:
+      case 'string':
+        return { code: JSON.stringify(arg.value.toString()) };
+      case 'number':
+        return { code: arg.value };
+      case 'null':
+      case 'undefined':
+        return { code: arg.type };
+      case 'object':
+      case 'function':
+        return {
+          code: uniqueId,
+          context: {
+            name: uniqueId,
+            handle: Number(arg.objectId)
+          }
+        };
+      default:
+        throw new Error('Function arguments of type "' +
+          arg.type + '" are not supported.');
+    }
+  },
+
+  _handleCallFnOnObjectResponse: function(err, response, returnByValue, cb) {
+    if (err) {
+      return cb(null, {
+        err: err,
+        wasThrown: true
+      });
+    }
+
+    var value = Object.create(null);
+    if (returnByValue && response.properties) {
+      for (var i = 0; i < response.properties.length; i++) {
+        value[response.properties[i].name] = true;
+      }
+    }
+
+    cb(null, {
+      result: { value: value },
+      wasThrown: false
+    });
+  },
 };
