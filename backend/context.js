@@ -193,12 +193,8 @@ bindings.onDebuggerMessage = function(data) {
     return cb(err);
   }
 
-  var refsLookup = {};
+  var refsLookup = Object.create(null);
   (msg.refs || []).forEach(function(r) {
-    if (!refsLookup.hasOwnProperty(r.handle)) {
-      // very unlikely: r.handle === '__proto__';
-      return;
-    }
     refsLookup[r.handle] = r;
   });
   cb(null, msg.body, refsLookup);

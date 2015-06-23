@@ -303,3 +303,26 @@ Scenario.prototype.resume = function() {
   this.expectResponse();
   this.expectEvent('Debugger.resumed');
 };
+
+Scenario.prototype.findGlobalObjectId = function(globalVar, refKey) {
+  this.sendRequest({ method: 'Runtime.evaluate', params: {
+    expression: globalVar
+  }});
+  this.expectResponse(m.containsProperties({
+    result: m.containsProperties({
+      objectId: this.saveRef(refKey, m.isString())
+    }),
+  }));
+};
+
+Scenario.prototype.findLocalObjectId = function(localVar, refKey) {
+  this.sendRequest({ method: 'Debugger.evaluateOnCallFrame', params: {
+    expression: localVar,
+    frame: 0
+  }});
+  this.expectResponse(m.containsProperties({
+    result: m.containsProperties({
+      objectId: this.saveRef(refKey, m.isString())
+    }),
+  }));
+};
