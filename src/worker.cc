@@ -173,6 +173,9 @@ void Worker::Enable() {
 }
 
 void Worker::Disable() {
+  // NOTE(bajtos) It's crucial to disable the debugger from the worker thread,
+  // otherwise the main (controller) thread will never receive the signal
+  // in case the debugged app is paused in the debugger
   const char cmd[] = "{\"type\":\"request\",\"command\":\"disconnect\"}";
   controller_->SendDebuggerCommand(cmd, ArraySize(cmd)-1);
 
