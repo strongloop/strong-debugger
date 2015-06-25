@@ -18,6 +18,9 @@ class AsyncWrap {
     inline void Ref();
     inline void CloseIfInitialized();
 
+    // This method can be safely called from another thread, as long as
+    // the application ensures that Send() and CloseIfInitialized()
+    // are not called concurrently
     inline void Send();
   private:
     static inline void SendCb(uv_async_t* handle);
