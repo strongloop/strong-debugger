@@ -31,14 +31,18 @@ UvError AsyncWrap<T>::Init(uv_loop_t* event_loop,
 
 template<class T>
 void AsyncWrap<T>::Unref() {
-  if (!handle_.data) return;
+  CHECK(handle_.data);
   uv_unref(reinterpret_cast<uv_handle_t*>(&handle_));
 }
 
 template<class T>
+void AsyncWrap<T>::Ref() {
+  CHECK(handle_.data);
+  uv_ref(reinterpret_cast<uv_handle_t*>(&handle_));
+}
+
+template<class T>
 void AsyncWrap<T>::CloseIfInitialized() {
-  // TODO(bajtos) protect against concurrent call of Send() from ThreadA
-  // and CloseIfInitialized() from threadB
   if (!handle_.data) return;
   handle_.data = NULL;
   uv_close(reinterpret_cast<uv_handle_t*>(&handle_), CloseCb);
@@ -46,13 +50,13 @@ void AsyncWrap<T>::CloseIfInitialized() {
 
 template<class T>
 void AsyncWrap<T>::Send() {
-  // TODO(bajtos) protect against concurrent call of Send() from ThreadA
-  // and CloseIfInitialized() from threadB
+  CHECK(handle_.data);
   uv_async_send(&handle_);
 }
 
 template<class T>
 void AsyncWrap<T>::SendCb(uv_async_t* handle) {
+  CHECK(handle->data);
   AsyncWrap<T>* self = static_cast<AsyncWrap<T>*>(handle->data);
   Callback cb = self->callback_;
   (self->target_->*cb)();

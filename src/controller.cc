@@ -48,23 +48,10 @@ void Controller::Start(uint16_t port,
 
   UvError err;
 
-  err = AsyncInit(&worker_started_signal_, &Controller::WorkerStartedSignalCb);
+  err = signals_.Init(event_loop_, this, &Controller::SignalsAvailableCb);
   if (err) goto error;
   // NOTE this handle stays referenced in order to block exit of the main
   // process until we finish debugger initialisation
-
-  err = AsyncInit(&enable_request_signal_, &Controller::EnableRequestSignalCb);
-  if (err) goto error;
-  enable_request_signal_.Unref(); // don't block exit of the main process
-
-  err = AsyncInit(&disable_request_signal_, &Controller::DisableRequestSignalCb);
-  if (err) goto error;
-  disable_request_signal_.Unref(); // don't block exit of the main process
-
-  err = AsyncInit(&process_debug_messages_signal_,
-                  &Controller::ProcessDebugMessagesCb);
-  if (err) goto error;
-  process_debug_messages_signal_.Unref(); // don't block exit
 
   worker_.Start(port);
 
@@ -88,14 +75,15 @@ UvError Controller::AsyncInit(AsyncWrap<Controller>* handle,
 }
 
 void Controller::Cleanup() {
-  worker_started_signal_.CloseIfInitialized();
-  enable_request_signal_.CloseIfInitialized();
-  disable_request_signal_.CloseIfInitialized();
-  // TODO: clean up the worker (?)
+  signals_.CloseIfInitialized();
+  singleton = NULL;
 }
 
-void Controller::Stop() {
-  // TODO(bajtos) Stop the worker thread, cleanup resources
+void Controller::Stop(StopCallback callback, void* callback_data) {
+  stop_cb_ = callback;
+  stop_user_data_ = callback_data;
+  signals_.Ref();
+  worker_.Stop();
 }
 
 Controller* Controller::GetInstance(Isolate* /*isolate*/) {
@@ -107,19 +95,23 @@ Controller* Controller::GetInstance(Isolate* /*isolate*/) {
 
 void Controller::SignalEnableRequest() {
   // TODO call Debugger:DebugBreak()
-  enable_request_signal_.Send();
+  signals_.PushBack(EnableDebugger);
 }
 
 void Controller::SignalDisableRequest() {
-  disable_request_signal_.Send();
+  signals_.PushBack(DisableDebugger);
 }
 
 void Controller::SignalWorkerStarted() {
-  worker_started_signal_.Send();
+  signals_.PushBack(WorkerStarted);
+}
+
+void Controller::SignalWorkerStopped() {
+  signals_.PushBack(WorkerStopped);
 }
 
 void Controller::SignalProcessDebugMessages() {
-  process_debug_messages_signal_.Send();
+  signals_.PushBack(ProcessDebugMessages);
 }
 
 void Controller::SendDebuggerCommand(const char* cmd, size_t cmd_len) {
@@ -141,12 +133,52 @@ void Controller::SendDebuggerCommand(const uint16_t* cmd, size_t cmd_len) {
 #endif
 }
 
+void Controller::SignalsAvailableCb() {
+  bool shutdown = false;
+  for (;;) {
+    MaybeValue<Signal> signal(signals_.PopFront());
+    if (!signal.has_value) break;
+    switch (signal.value) {
+      case WorkerStarted:
+        WorkerStartedSignalCb();
+        break;
+      case WorkerStopped:
+        // wait until all signals are processed before shutting down
+        shutdown = true;
+        break;
+      case EnableDebugger:
+        EnableRequestSignalCb();
+        break;
+      case DisableDebugger:
+        DisableRequestSignalCb();
+        break;
+      case ProcessDebugMessages:
+        ProcessDebugMessagesCb();
+        break;
+      default:
+        fprintf(stderr,
+                "strong-debugger's Controller received unknown signal %d\n",
+                signal.value);
+    }
+  }
+
+  if (shutdown) {
+    WorkerStoppedSignalCb();
+  }
+}
+
 void Controller::WorkerStartedSignalCb() {
   // Allow the main event loop to exit even while Controller is running
-  worker_started_signal_.Unref();
+  signals_.Unref();
   start_cb_(worker_.GetStartResult(),
             worker_.GetPort(),
             start_user_data_);
+}
+
+void Controller::WorkerStoppedSignalCb() {
+  signals_.Unref();
+  Cleanup();
+  stop_cb_(stop_user_data_);
 }
 
 void Controller::ProcessDebugMessagesCb() {

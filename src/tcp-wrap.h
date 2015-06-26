@@ -15,6 +15,7 @@ class TcpWrap {
 
     inline TcpWrap();
     inline UvError Init(uv_loop_t* event_loop, T* target);
+    inline void Unref();
     inline void CloseIfInitialized(CloseCallback callback);
 
     inline UvError Bind(const char* ip4addr, uint16_t port);

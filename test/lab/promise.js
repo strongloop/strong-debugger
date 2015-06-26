@@ -9,5 +9,5 @@ Promise.waitForEvent = function(emitter, name) {
 };
 
 Promise.onPossiblyUnhandledRejection(function(err) {
-  console.error('POSSIBLY UNHANDLED REJECTION', err);
+  console.error('POSSIBLY UNHANDLED REJECTION', err.stack);
 });

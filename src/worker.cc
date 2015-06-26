@@ -13,6 +13,7 @@ Worker::Worker(Controller* controller,
                const char* script_root,
                bool debuglog_enabled)
   : controller_(controller), server_port_(-1),
+    running_(false),
     isolate_(NULL), event_loop_(NULL),
     debuglog_enabled_(debuglog_enabled) {
   CHECK(!!controller_);
@@ -49,13 +50,21 @@ void Worker::Start(uint16_t port) {
 
   err = AsyncInit(&enable_response_signal_, &Worker::EnableResponseSignalCb);
   if (err) goto error;
+  enable_response_signal_.Unref();
+
   err = AsyncInit(&disable_response_signal_, &Worker::DisableResponseSignalCb);
   if (err) goto error;
+  disable_response_signal_.Unref();
+
+  err = AsyncInit(&stop_signal_, &Worker::StopSignalCb);
+  if (err) goto error;
+  stop_signal_.Unref();
 
   err = debugger_messages_.Init(event_loop_,
                                 this,
                                 &Worker::DebuggerMessageSignalCb);
   if (err) goto error;
+  debugger_messages_.Unref();
 
   client_connected_ = false;
 
@@ -82,17 +91,15 @@ void Worker::Start(uint16_t port) {
 error:
   start_result_ = uv_strerror(err);
   server_port_ = -1;
-
-  // TODO(bajtos) wait until uv_close_cb of all handles were called before
-  // calling back from this method
-  MasterCleanup();
+  Cleanup();
 
   controller_->SignalWorkerStarted();
 }
 
-void Worker::MasterCleanup() {
+void Worker::Cleanup() {
   enable_response_signal_.CloseIfInitialized();
   disable_response_signal_.CloseIfInitialized();
+  stop_signal_.CloseIfInitialized();
   debugger_messages_.CloseIfInitialized();
   server_.CloseIfInitialized(NULL);
 
@@ -103,18 +110,21 @@ void Worker::MasterCleanup() {
 }
 
 void Worker::Stop() {
-  // TODO(bajtos) clean up and release resources
+  stop_signal_.Send();
 }
 
 void Worker::SignalEnableResponse() {
+  if (!running_) return;
   enable_response_signal_.Send();
 }
 
 void Worker::SignalDisableResponse() {
+  if (!running_) return;
   disable_response_signal_.Send();
 }
 
 void Worker::HandleDebuggerMessage(const char* message) {
+  if (!running_) return;
   debugger_messages_.PushBack(message);
 }
 
@@ -133,11 +143,29 @@ void Worker::UnhandledError(const char* msg) {
 void Worker::ThreadCb(Worker* self) {
   self->controller_->SignalWorkerStarted();
   self->Run();
+  self->controller_->SignalWorkerStopped();
 }
 
 void Worker::Run() {
-  int res = uv_run(event_loop_, UV_RUN_DEFAULT);
-  CHECK_EQ(0, res);
+  running_ = true;
+  uv_run(event_loop_, UV_RUN_DEFAULT);
+
+  CloseClientConnection();
+  server_.Unref();
+
+  // Wait until all client handles are correctly closed down
+  int res;
+  do {
+    res = uv_run(event_loop_, UV_RUN_NOWAIT);
+  } while (res);
+
+  running_ = false;
+  Cleanup();
+
+  // One more turn to ensure Cleanup() steps are processed too
+  do {
+    res = uv_run(event_loop_, UV_RUN_NOWAIT);
+  } while (res);
 }
 
 void Worker::Enable() {
@@ -145,6 +173,9 @@ void Worker::Enable() {
 }
 
 void Worker::Disable() {
+  // NOTE(bajtos) It's crucial to disable the debugger from the worker thread,
+  // otherwise the main (controller) thread will never receive the signal
+  // in case the debugged app is paused in the debugger
   const char cmd[] = "{\"type\":\"request\",\"command\":\"disconnect\"}";
   controller_->SendDebuggerCommand(cmd, ArraySize(cmd)-1);
 
@@ -252,6 +283,7 @@ void Worker::ClientMessageSentCb(uv_write_t* req) {
 }
 
 void Worker::CloseClientConnection() {
+  if (!client_connected_) return;
   client_.CloseIfInitialized(&Worker::ClientClosedCb);
   Disable();
 }
@@ -276,6 +308,9 @@ void Worker::DebuggerMessageSignalCb() {
   }
 }
 
+void Worker::StopSignalCb() {
+  uv_stop(event_loop_);
+}
 
 void Worker::ClientDataCb(IncomingConnection<Worker>* /*client*/,
                           const char* buffer,

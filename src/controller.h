@@ -8,6 +8,7 @@
 #include "worker.h"
 #include "async-wrap.h"
 #include "tcp-wrap.h"
+#include "locked-queue.h"
 
 namespace strongloop {
 namespace debugger {
@@ -34,26 +35,41 @@ class Controller {
                                   uint16_t port,
                                   void* user_data);
 
+    typedef void (*StopCallback)(void* user_data);
+
     void Start(uint16_t port,
                StartCallback callback,
                void* callback_data = NULL);
-    void Stop();
+
+    void Stop(StopCallback callback, void* callback_data = NULL);
 
 
     // Internal API for Worker, may be called from another thread
     void SignalEnableRequest();
     void SignalDisableRequest();
     void SignalWorkerStarted();
+    void SignalWorkerStopped();
     void SignalProcessDebugMessages();
     void SendDebuggerCommand(const char* cmd, size_t cmd_len);
     void SendDebuggerCommand(const uint16_t* cmd, size_t cmd_len);
 
     virtual ~Controller();
   private:
+    enum Signal {
+      EnableDebugger,
+      DisableDebugger,
+      WorkerStarted,
+      WorkerStopped,
+      ProcessDebugMessages
+    };
+
+    void SignalsAvailableCb();
     void EnableRequestSignalCb();
     void DisableRequestSignalCb();
     void WorkerStartedSignalCb();
+    void WorkerStoppedSignalCb();
     void ProcessDebugMessagesCb();
+
     static void MessageHandler(const Debug::Message& message);
 
     UvError AsyncInit(AsyncWrap<Controller>* handle,
@@ -63,15 +79,15 @@ class Controller {
     Isolate* const isolate_;
     uv_loop_t* const event_loop_;
 
-    AsyncWrap<Controller> enable_request_signal_;
-    AsyncWrap<Controller> disable_request_signal_;
-    AsyncWrap<Controller> worker_started_signal_;
-    AsyncWrap<Controller> process_debug_messages_signal_;
+    LockedQueue<Signal, Controller> signals_;
 
     Worker worker_;
 
     StartCallback start_cb_;
     void* start_user_data_;
+
+    StopCallback stop_cb_;
+    void* stop_user_data_;
 };
 
 } // namespace debugger

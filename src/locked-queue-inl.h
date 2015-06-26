@@ -31,6 +31,16 @@ void LockedQueue<T, R>::CloseIfInitialized() {
 }
 
 template<typename T, typename R>
+void LockedQueue<T, R>::Ref() {
+  signal_.Ref();
+}
+
+template<typename T, typename R>
+void LockedQueue<T, R>::Unref() {
+  signal_.Unref();
+}
+
+template<typename T, typename R>
 void LockedQueue<T, R>::PushBack(const T& item) {
   {
     MutexWrap::Scope guard(&lock_);

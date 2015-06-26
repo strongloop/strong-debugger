@@ -15,6 +15,8 @@ var SCRIPT_UNDER_TEST = l.fixture(function() {
 });
 
 l.runUsing(l.debugScript(SCRIPT_UNDER_TEST), function(client) {
+  client.ignoreDebuggeeCrash();
+
   return client.verifyScenario(function(s) {
     s.enableDebugger();
     s.sendRequest({ method: 'Debugger.setPauseOnExceptions', params: {
@@ -63,5 +65,7 @@ l.runUsing(l.debugScript(SCRIPT_UNDER_TEST), function(client) {
         type: 'object',
       }
     }));
+
+    s.resume();
   });
 });

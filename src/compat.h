@@ -29,6 +29,30 @@ static const UvError UvOk = UvError(UV_OK);
 inline UvError UvLastError(int res, uv_loop_t* loop);
 const char* UvStrError(int res, uv_loop_t* loop);
 
+/***** Atomic bool ****/
+
+#ifdef WIN32
+#define FullMemoryBarrier() MemoryBarrier()
+#else
+#define FullMemoryBarrier() __sync_synchronize()
+#endif
+
+class AtomicBool {
+  public:
+    explicit inline AtomicBool(bool value) : value_(value) {}
+
+    inline operator bool() const {
+      FullMemoryBarrier();
+      return value_;
+    }
+    inline AtomicBool& operator=(bool value) {
+      value_ = value;
+      FullMemoryBarrier();
+      return *this;
+    }
+  private:
+    volatile bool value_;
+};
 
 /***** modified CHECK macros from io.js/lib/util.h *****/
 

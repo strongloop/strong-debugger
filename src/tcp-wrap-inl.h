@@ -68,14 +68,14 @@ UvError TcpWrap<T>::Accept(TcpWrap<C>* client) {
 }
 
 template<class T>
+void TcpWrap<T>::Unref() {
+  uv_unref(reinterpret_cast<uv_handle_t*>(&handle_));
+}
+
+template<class T>
 void TcpWrap<T>::CloseIfInitialized(
      typename TcpWrap<T>::CloseCallback callback) {
-  if (!IsInitialized()) {
-    // handle_.data is NULL, we can't call CloseCb(handle_)
-    CloseCallback cb = close_callback_;
-    if (cb) (target_->*cb)(this);
-    return;
-  }
+  if (!IsInitialized()) return;
   close_callback_ = callback;
   uv_close(reinterpret_cast<uv_handle_t*>(&handle_), CloseCb);
 }
