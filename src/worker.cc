@@ -9,10 +9,18 @@
 namespace strongloop {
 namespace debugger {
 
+static void PrintError(const char* error, UvError cause = UvOk) {
+  fprintf(stderr,
+          "strong-debugger error: %s%s%s\n",
+          error,
+          cause != UvOk ? " " : "",
+          cause != UvOk ? uv_strerror(cause) : "");
+}
+
 Worker::Worker(Controller* controller,
                const char* script_root,
                bool debuglog_enabled)
-  : controller_(controller), server_port_(-1),
+  : controller_(controller), start_result_(NULL), server_port_(-1),
     running_(false),
     isolate_(NULL), event_loop_(NULL),
     debuglog_enabled_(debuglog_enabled) {
@@ -26,10 +34,23 @@ Worker::Worker(Controller* controller,
 }
 
 void Worker::Start(uint16_t port) {
+  for (size_t ix = 0; ix < scripts_.size(); ix++) {
+    if (!scripts_[ix].contents.empty()) continue;
+    std::string msg("Cannot read backend script ");
+    msg += scripts_[ix].filename;
+    PrintError(msg.c_str());
+    start_result_ = "Internal error: cannot load some of the worker scripts.";
+  }
+
+  if (start_result_) {
+    controller_->SignalWorkerStarted();
+    return; // abort startup
+  }
+
   start_result_ = InitIsolate();
   if (start_result_) {
     controller_->SignalWorkerStarted();
-    return;
+    return; // abort startup
   }
 
   server_port_ = port;
@@ -135,11 +156,6 @@ UvError Worker::AsyncInit(AsyncWrap<Worker>* handle,
   return handle->Init(event_loop_, this, callback);
 }
 
-void Worker::UnhandledError(const char* msg) {
-  // TODO: report the error back to the controller and shut down
-  printf("Unhandled error in debugger worker: %s\n", msg);
-}
-
 void Worker::ThreadCb(Worker* self) {
   self->controller_->SignalWorkerStarted();
   self->Run();
@@ -203,18 +219,38 @@ void Worker::ServerConnectionCb(TcpWrap<Worker>* /*server*/) {
 
   return;
 error:
-  UnhandledError(uv_strerror(err));
+  PrintError("Cannot accept an incoming connection.", err);
   CloseClientConnection();
 }
 
 class RejectedClient {
   public:
     template<class S>
-    UvError AcceptAndReject(TcpWrap<S>* server) {
-      UvError err = conn_.Init(server->handle()->loop, this);
-      if (err) return err;
+    static void HandleIncomingConnection(TcpWrap<S>* server) {
+      RejectedClient* self = new RejectedClient();
+      UvError err = self->Init(server->handle()->loop);
+      if (err) {
+        PrintError("Cannot initialize an incoming connection.", err);
+        delete self;
+        return;
+      }
 
-      err = conn_.AcceptFromServer(server);
+      // NOTE(bajtos) AcceptAndReject takes the ownership of "self" and
+      // deletes the object when the connection is handled (see CloseCb below)
+      err = self->AcceptAndReject(server);
+      if (err) {
+        PrintError("Cannot accept an incoming connection.", err);
+      }
+    }
+
+  private:
+    UvError Init(uv_loop_t* event_loop) {
+      return conn_.Init(event_loop, this);
+    }
+
+    template<class S>
+    UvError AcceptAndReject(TcpWrap<S>* server) {
+      UvError err = conn_.AcceptFromServer(server);
       if (err) goto error;
 
       static char response[] =
@@ -233,7 +269,6 @@ class RejectedClient {
       return err;
     }
 
-  private:
     void CloseIfInitialized() {
       conn_.CloseIfInitialized(&RejectedClient::CloseCb);
     }
@@ -252,9 +287,7 @@ class RejectedClient {
 };
 
 void Worker::AcceptAndRejectConnection() {
-  RejectedClient* client2 = new RejectedClient();
-  UvError err = client2->AcceptAndReject(&server_);
-  if (err) UnhandledError(uv_strerror(err));
+  RejectedClient::HandleIncomingConnection(&server_);
 }
 
 int Worker::SendClientMessage(const char* msg, size_t msglen) {
@@ -337,7 +370,7 @@ void Worker::ClientDataCb(IncomingConnection<Worker>* /*client*/,
 
 void Worker::ClientErrorCb(IncomingConnection<Worker>* /*client*/,
                            UvError err) {
-  if (err != UV_EOF) UnhandledError(uv_strerror(err));
+  if (err != UV_EOF) PrintError("Read error.", err);
   CloseClientConnection();
 }
 
@@ -345,18 +378,16 @@ void Worker::LoadScriptFile(const char* root, const char* filepath) {
   std::string fullpath(root);
   fullpath += filepath;
 
+  std::string contents;
+
   std::ifstream reader(fullpath.c_str());
-  if (!reader) {
-    std::string msg("Cannot read backend script ");
-    msg += fullpath;
-    UnhandledError(msg.c_str());
-    return;
+  if (reader) {
+    std::stringstream buffer;
+    buffer << reader.rdbuf();
+    contents = buffer.str();
   }
 
-  std::stringstream buffer;
-  buffer << reader.rdbuf();
-
-  ScriptDefinition def(fullpath, buffer.str());
+  ScriptDefinition def(fullpath, contents);
   scripts_.push_back(def);
 }
 
