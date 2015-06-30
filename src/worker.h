@@ -67,7 +67,6 @@ class Worker {
 
     UvError AsyncInit(AsyncWrap<Worker>* handle,
                       AsyncWrap<Worker>::Callback callback);
-    void UnhandledError(const char* msg);
 
     inline UvError UvResult(int res) const {
       return UvLastError(res, event_loop_);
