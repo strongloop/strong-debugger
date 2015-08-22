@@ -27,13 +27,38 @@ static const uint32_t kDataSlot = 0;
 void PrintErrorMessage(Handle<Message> msg) {
   fprintf(stderr,
           "%s:%d\n  %s\n%*s\n%s\n",
-          *NanUtf8String(msg->GetScriptResourceName()),
+#if NODE_VERSION_AT_LEAST(0, 11, 0)
+          *Nan::Utf8String(msg->GetScriptResourceName()),
+#else
+          *Nan::Utf8String(Nan::New(msg->GetScriptResourceName())),
+#endif
           msg->GetLineNumber(),
-          *NanUtf8String(msg->GetSourceLine()),
+          *Nan::Utf8String(msg->GetSourceLine()),
           msg->GetStartColumn() + 1 /* 1-based index */ + 2 /* padding */,
           "^",
-          *NanUtf8String(msg->Get()));
+          *Nan::Utf8String(msg->Get()));
 }
+
+#if NODE_VERSION_AT_LEAST(0, 11, 0)
+void SetFunctionTemplate(Isolate* isolate,
+                         Local<ObjectTemplate> templ,
+                         const char* name,
+                         v8::FunctionCallback callback) {
+  templ->Set(
+    String::NewFromUtf8(isolate, name),
+    FunctionTemplate::New(isolate, callback));
+}
+#else
+void SetFunctionTemplate(Isolate* isolate,
+                         Local<ObjectTemplate> templ,
+                         const char* name,
+                         v8::InvocationCallback callback) {
+  templ->Set(
+    Nan::New(name).ToLocalChecked(),
+    FunctionTemplate::New(callback));
+}
+#endif
+
 
 const char* Worker::InitIsolate() {
   Isolate* isolate = Isolate::New();
@@ -46,34 +71,37 @@ const char* Worker::InitIsolate() {
   isolate_ = isolate;
 
   Isolate::Scope isolate_scope(isolate_);
-  NanScope();
+  Nan::HandleScope scope;
 
-  Local<ObjectTemplate> bindings_templ = NanNew<ObjectTemplate>();
-  bindings_templ->Set(
-    NanNew("sendFrontEndMessage"),
-    NanNew<FunctionTemplate>(SendFrontEndMessage));
-  bindings_templ->Set(
-    NanNew("closeFrontEndConnection"),
-    NanNew<FunctionTemplate>(CloseFrontEndConnection));
-  bindings_templ->Set(
-    NanNew("enableDebugger"),
-    NanNew<FunctionTemplate>(EnableDebugger));
-  bindings_templ->Set(
-    NanNew("disableDebugger"),
-    NanNew<FunctionTemplate>(DisableDebugger));
-  bindings_templ->Set(
-    NanNew("sendDebuggerCommand"),
-    NanNew<FunctionTemplate>(SendDebuggerCommand));
-  bindings_templ->Set(
-    NanNew("log"),
-    NanNew<FunctionTemplate>(Log));
+  Local<ObjectTemplate> bindings_templ = Nan::New<ObjectTemplate>();
+  SetFunctionTemplate(isolate,
+                      bindings_templ,
+                      "sendFrontEndMessage",
+                      SendFrontEndMessage);
+  SetFunctionTemplate(isolate,
+                      bindings_templ,
+                      "closeFrontEndConnection",
+                      CloseFrontEndConnection);
+  SetFunctionTemplate(isolate,
+                      bindings_templ,
+                      "enableDebugger",
+                      EnableDebugger);
+  SetFunctionTemplate(isolate,
+                      bindings_templ,
+                      "disableDebugger",
+                      DisableDebugger);
+  SetFunctionTemplate(isolate,
+                      bindings_templ,
+                      "sendDebuggerCommand",
+                      SendDebuggerCommand);
+  SetFunctionTemplate(isolate, bindings_templ, "log", Log);
   // TODO: error logging(?)
 
-  Local<ObjectTemplate> global_templ = NanNew<ObjectTemplate>();
-  global_templ->Set(NanNew("bindings"), bindings_templ);
-  global_templ->Set(
-    NanNew("NODE_MODULE_VERSION"),
-    NanNew(NODE_MODULE_VERSION));
+  Local<ObjectTemplate> global_templ = Nan::New<ObjectTemplate>();
+  Nan::SetTemplate(global_templ, "bindings", bindings_templ);
+  Nan::SetTemplate(global_templ,
+                   "NODE_MODULE_VERSION",
+                   Nan::New(NODE_MODULE_VERSION));
 
   ExtensionConfiguration* ext = NULL;
 #if NODE_VERSION_AT_LEAST(0, 11, 0)
@@ -87,8 +115,8 @@ const char* Worker::InitIsolate() {
 
   for (size_t ix = 0; ix < scripts_.size(); ix++) {
     const char* script_path = scripts_[ix].filename.c_str();
-    Local<String> filename = NanNew(script_path);
-    Local<String> src = NanNew(scripts_[ix].contents.c_str());
+    Local<String> filename = Nan::New(script_path).ToLocalChecked();
+    Local<String> src = Nan::New(scripts_[ix].contents).ToLocalChecked();
 
     TryCatch try_catch;
     Local<Script> script = Script::Compile(src, filename);
@@ -112,7 +140,7 @@ const char* Worker::InitIsolate() {
 void Worker::EmitScriptEvent(const char* event, const char* payload) {
   Locker locker(isolate_);
   Isolate::Scope isolate_scope(isolate_);
-  NanScope();
+  Nan::HandleScope scope;
 
 #if NODE_VERSION_AT_LEAST(0, 11, 0)
   Local<Context> context = Local<Context>::New(isolate_, context_);
@@ -122,8 +150,10 @@ void Worker::EmitScriptEvent(const char* event, const char* payload) {
   Context::Scope context_scope(context_);
 #endif
 
-  Local<Value> bindings = context->Global()->Get(NanNew<String>("bindings"));
-  Local<Value> handler = bindings->ToObject()->Get(NanNew<String>(event));
+  Local<Value> bindings = context->Global()->Get(
+                            Nan::New<String>("bindings").ToLocalChecked());
+  Local<Value> handler = bindings->ToObject()->Get(
+                            Nan::New<String>(event).ToLocalChecked());
   if (!handler->IsFunction()) {
     printf("[strong-debugger] ignored unhandled event %s(%s)\n",
            event,
@@ -132,9 +162,9 @@ void Worker::EmitScriptEvent(const char* event, const char* payload) {
   }
 
   TryCatch try_catch;
-  Local<Value> arg = NanUndefined();
+  Local<Value> arg = Nan::Undefined();
   if (payload && *payload)
-    arg = NanNew<String>(payload);
+    arg = Nan::New<String>(payload).ToLocalChecked();
 
   handler.As<Function>()->Call(context->Global(), 1, &arg);
   if (try_catch.HasCaught()) {
@@ -153,62 +183,61 @@ Worker* FromIsolate(Isolate* isolate) {
   return static_cast<Worker*>(data);
 }
 
-NAN_METHOD(Worker::SendFrontEndMessage) {
-  Worker* worker = FromIsolate(args.GetIsolate());
+JS_METHOD(Worker::SendFrontEndMessage) {
+  Worker* worker = FromIsolate(info.GetIsolate());
 
-  if (!args[0]->IsString()) {
-    return NanThrowError("The first argument must be a string.");
+  if (!info[0]->IsString()) {
+    Nan::ThrowError("The first argument must be a string.");
+    JS_RETURN_UNDEFINED();
   }
 
-  NanUtf8String msg(args[0].As<String>());
+  Nan::Utf8String msg(info[0].As<String>());
   worker->SendClientMessage(*msg, msg.length());
-  NanReturnUndefined();
+  JS_RETURN_UNDEFINED();
 }
 
-NAN_METHOD(Worker::SendDebuggerCommand) {
-  Worker* worker = FromIsolate(args.GetIsolate());
+JS_METHOD(Worker::SendDebuggerCommand) {
+  Worker* worker = FromIsolate(info.GetIsolate());
 
-  if (!args[0]->IsString()) {
-    return NanThrowError("The first argument must be a string.");
+  if (!info[0]->IsString()) {
+    Nan::ThrowError("The first argument must be a string.");
+    JS_RETURN_UNDEFINED();
   }
 
-  NanUtf8String msg(args[0].As<String>());
+  Nan::Utf8String msg(info[0].As<String>());
   worker->controller_->SendDebuggerCommand(*msg, msg.length());
-  NanReturnUndefined();
+  JS_RETURN_UNDEFINED();
 }
 
-NAN_METHOD(Worker::CloseFrontEndConnection) {
-  Worker* worker = FromIsolate(args.GetIsolate());
+JS_METHOD(Worker::CloseFrontEndConnection) {
+  Worker* worker = FromIsolate(info.GetIsolate());
 
   worker->CloseClientConnection();
-  NanReturnUndefined();
+  JS_RETURN_UNDEFINED();
 }
 
-NAN_METHOD(Worker::EnableDebugger) {
-  Worker* worker = FromIsolate(args.GetIsolate());
+JS_METHOD(Worker::EnableDebugger) {
+  Worker* worker = FromIsolate(info.GetIsolate());
 
   worker->Enable();
-  NanReturnUndefined();
+  JS_RETURN_UNDEFINED();
 }
 
-NAN_METHOD(Worker::DisableDebugger) {
-  Worker* worker = FromIsolate(args.GetIsolate());
+JS_METHOD(Worker::DisableDebugger) {
+  Worker* worker = FromIsolate(info.GetIsolate());
 
   worker->Disable();
-  NanReturnUndefined();
+  JS_RETURN_UNDEFINED();
 }
 
-NAN_METHOD(Worker::Log) {
-  Worker* worker = FromIsolate(args.GetIsolate());
-  if (!worker->debuglog_enabled_) {
-    NanReturnUndefined();
-  }
+JS_METHOD(Worker::Log) {
+  Worker* worker = FromIsolate(info.GetIsolate());
+  if (!worker->debuglog_enabled_) JS_RETURN_UNDEFINED();
 
-  NanUtf8String str(args[0]);
+  Nan::Utf8String str(info[0]);
   const char* msg = *str ? *str : "toString() threw an exception";
   fprintf(stderr, "  strong-debugger: %s\n", msg);
-
-  NanReturnUndefined();
+  JS_RETURN_UNDEFINED();
 }
 
 } // namespace debugger
