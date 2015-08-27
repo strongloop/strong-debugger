@@ -184,7 +184,7 @@ void Controller::WorkerStoppedSignalCb() {
 void Controller::ProcessDebugMessagesCb() {
   Locker locker(isolate_);
   Isolate::Scope isolate_scope(isolate_);
-  NanScope();
+  Nan::HandleScope scope;
 
   Debug::ProcessDebugMessages();
 }
@@ -212,15 +212,16 @@ void Controller::MessageHandler(const Debug::Message& message) {
 #if NODE_VERSION_AT_LEAST(0, 11, 0)
   Isolate* isolate = message.GetIsolate();
   HandleScope scope(isolate);
-  Local<String> json = message.GetJSON();
+  Nan::Utf8String json_string(message.GetJSON());
 #else
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope;
-  Handle<String> json = message.GetJSON();
+  Local<String> json_handle = Nan::New(message.GetJSON());
+  Nan::Utf8String json_string(json_handle);
 #endif
 
   Controller* self = GetInstance(isolate);
-  self->worker_.HandleDebuggerMessage(*NanUtf8String(json));
+  self->worker_.HandleDebuggerMessage(*json_string);
 }
 
 } // namespace debugger

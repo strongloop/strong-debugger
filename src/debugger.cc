@@ -19,13 +19,13 @@ using v8::Value;
 static const uint16_t MAX_PORT = -1;
 
 static void StartCallback(const char* err, uint16_t port, void* data) {
-  NanScope();
+  Nan::HandleScope scope;
 
-  NanCallback* js_callback = static_cast<NanCallback*>(data);
+  Nan::Callback* js_callback = static_cast<Nan::Callback*>(data);
 
   Local<Value> args[] = {
-    err ? NanError(err) : static_cast<Local<Value> >(NanNull()),
-    NanNew<Number>(port)
+    err ? Nan::Error(err) : static_cast<Local<Value> >(Nan::Null()),
+    Nan::New<Number>(port)
   };
 
   js_callback->Call(ArraySize(args), args);
@@ -34,9 +34,9 @@ static void StartCallback(const char* err, uint16_t port, void* data) {
 }
 
 static void StopCallback(void* data) {
-  NanScope();
+  Nan::HandleScope scope;
 
-  NanCallback* js_callback = static_cast<NanCallback*>(data);
+  Nan::Callback* js_callback = static_cast<Nan::Callback*>(data);
 
   js_callback->Call(0, NULL);
 
@@ -44,79 +44,81 @@ static void StopCallback(void* data) {
 }
 
 NAN_METHOD(Start) {
-  if (!args[0]->IsObject()) {
-   return NanThrowTypeError(
+  if (!info[0]->IsObject()) {
+   return Nan::ThrowTypeError(
      "Internal error: the first arg must be an \"options\" object");
   }
 
-  Local<Object> options = args[0].As<Object>();
+  Local<Object> options = info[0].As<Object>();
 
-  Local<Value> port_handle = options->Get(NanNew("port"));
+  Local<Value> key = Nan::New("port").ToLocalChecked();
+  Local<Value> port_handle = Nan::Get(options, key).ToLocalChecked();
   if (!port_handle->IsUint32()) {
-    return NanThrowTypeError(
+    return Nan::ThrowTypeError(
       "The \"port\" option must be an unsigned integer.");
   }
   const uint32_t port = port_handle->Uint32Value();
 
   if (port > MAX_PORT) {
-    return NanThrowRangeError(
+    return Nan::ThrowRangeError(
       "The \"port\" option must be a number between 0 - 65535.");
   }
 
-  Local<Value> val = options->Get(NanNew("scriptRoot"));
+  key = Nan::New("scriptRoot").ToLocalChecked();
+  Local<Value> val = Nan::Get(options, key).ToLocalChecked();
   if (!val->IsString()) {
-    return NanThrowTypeError("options.scriptRoot must be a string");
+    return Nan::ThrowTypeError("options.scriptRoot must be a string");
   }
-  NanUtf8String script_root(val);
+  Nan::Utf8String script_root(val);
 
-  val = options->Get(NanNew("debuglogEnabled"));
+  key = Nan::New("debuglogEnabled").ToLocalChecked();
+  val = Nan::Get(options, key).ToLocalChecked();
   if (!val->IsBoolean()) {
-    return NanThrowTypeError("options.debuglogEnabled must be a boolean");
+    return Nan::ThrowTypeError("options.debuglogEnabled must be a boolean");
   }
   bool debuglog_enabled = val->BooleanValue();
 
-  if (!args[1]->IsFunction()) {
-    return NanThrowError("You must supply a callback argument.");
+  if (!info[1]->IsFunction()) {
+    return Nan::ThrowError("You must supply a callback argument.");
   }
-  Local<Function> callback = args[1].As<Function>();
+  Local<Function> callback = info[1].As<Function>();
 
-  Controller* controller = Controller::GetInstance(args.GetIsolate());
+  Controller* controller = Controller::GetInstance(info.GetIsolate());
   if (!controller) {
-    controller = new Controller(args.GetIsolate(),
+    controller = new Controller(info.GetIsolate(),
                                 uv_default_loop(),
                                 *script_root,
                                 debuglog_enabled);
   }
 
   if (!controller) {
-    Local<Value> err = NanNew<String>(
-      "Cannot create a new Controller object, out of memory?");
-    NanMakeCallback(NanGetCurrentContext()->Global(), callback, 1, &err);
+    Local<Value> err = Nan::New<String>(
+      "Cannot create a new Controller object, out of memory?").ToLocalChecked();
+    Nan::MakeCallback(Nan::GetCurrentContext()->Global(), callback, 1, &err);
   }
 
-  NanCallback* js_callback = new NanCallback(callback);
+  Nan::Callback* js_callback = new Nan::Callback(callback);
   controller->Start(port, StartCallback, js_callback);
-
-  NanReturnUndefined();
 }
 
 NAN_METHOD(Stop) {
-  if (!args[0]->IsFunction()) {
-    return NanThrowError("You must supply a callback argument.");
+  if (!info[0]->IsFunction()) {
+    return Nan::ThrowError("You must supply a callback argument.");
   }
 
-  Local<Function> callback = args[0].As<Function>();
-  NanCallback* js_callback = new NanCallback(callback);
+  Local<Function> callback = info[0].As<Function>();
+  Nan::Callback* js_callback = new Nan::Callback(callback);
 
-  Controller* controller = Controller::GetInstance(args.GetIsolate());
+  Controller* controller = Controller::GetInstance(info.GetIsolate());
   controller->Stop(StopCallback, js_callback);
-
-  NanReturnUndefined();
 }
 
 void InitModule(Handle<Object> exports) {
-  exports->Set(NanNew("start"), NanNew<FunctionTemplate>(Start)->GetFunction());
-  exports->Set(NanNew("stop"), NanNew<FunctionTemplate>(Stop)->GetFunction());
+  exports->Set(Nan::New("start").ToLocalChecked(),
+               Nan::New<FunctionTemplate>(Start)->GetFunction());
+
+  exports->Set(Nan::New("stop").ToLocalChecked(),
+               Nan::New<FunctionTemplate>(Stop)->GetFunction());
 }
 
 NODE_MODULE(debugger, InitModule)

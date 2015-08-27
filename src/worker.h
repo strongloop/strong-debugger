@@ -18,6 +18,16 @@ using v8::Persistent;
 
 class Controller;
 
+// JS_* macros are simplified versions of NAN_* counterparts and don't require
+// any current context to exists, as opposed to NAN.
+#if NODE_VERSION_AT_LEAST(0, 11, 0)
+#define JS_METHOD(name) void name(const v8::FunctionCallbackInfo<v8::Value>& info)
+#define JS_RETURN_UNDEFINED() do { return; } while(false)
+#else
+#define JS_METHOD(name) v8::Handle<v8::Value> name(const v8::Arguments& info)
+#define JS_RETURN_UNDEFINED() do { return v8::Undefined(); } while(false)
+#endif
+
 /**
  * The background worker implementing TCP server for DevTools protocol.
  *
@@ -119,12 +129,12 @@ class Worker {
 
     // V8 bindings
     void EmitScriptEvent(const char* event, const char* payload = NULL);
-    static NAN_METHOD(SendFrontEndMessage);
-    static NAN_METHOD(CloseFrontEndConnection);
-    static NAN_METHOD(EnableDebugger);
-    static NAN_METHOD(DisableDebugger);
-    static NAN_METHOD(SendDebuggerCommand);
-    static NAN_METHOD(Log);
+    static JS_METHOD(SendFrontEndMessage);
+    static JS_METHOD(CloseFrontEndConnection);
+    static JS_METHOD(EnableDebugger);
+    static JS_METHOD(DisableDebugger);
+    static JS_METHOD(SendDebuggerCommand);
+    static JS_METHOD(Log);
 };
 
 } // namespace debugger

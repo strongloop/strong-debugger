@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "bindings": "^1.2.1",
-    "nan": "^1.8.4"
+    "nan": "^2.0.5"
   },
   "devDependencies": {
     "bluebird": "^2.9.26",
@@ -37,6 +37,6 @@
     "newline-json": "^0.1.1",
     "split": "^1.0.0",
     "tap": "^1.2.0",
-    "ws": "^0.7.2"
+    "ws": "^0.8.0"
   }
 }
