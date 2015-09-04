@@ -4,7 +4,7 @@ var m = require('./lab/matchers');
 
 l.runUsing(l.debugScript(l.fixture('periodic-break.js')), function(client) {
   return client.verifyScenario(function(s) {
-    s.sendRequest({ id: 1, method:'Debugger.enable' });
+    s.sendRequest({ id: 1, method: 'Debugger.enable' });
     s.expectResponse();
     s.expectEvent('Debugger.scriptParsed', m.containsProperties({
       scriptId: s.saveRef('scriptId', m.isString()),
