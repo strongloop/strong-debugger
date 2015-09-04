@@ -12,9 +12,7 @@
      "value": 80,
      "allowRegex": true
   },
-  "validateJSDoc": {
-    "checkParamNames": false,
-    "checkRedundantParams": false,
+  "jsDoc": {
     "requireParamTypes": true
   },
   "excludeFiles": [
