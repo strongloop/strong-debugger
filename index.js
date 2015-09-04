@@ -83,3 +83,15 @@ exports.stop = function(cb) {
     });
   }
 };
+
+/**
+ * Get the status of the debugger thread (sync).
+ * @return {Object} Status object with the following properties: running, port.
+ */
+exports.status = function() {
+  var running = listeningOnPort > 0;
+  return {
+    running: running,
+    port: running ? listeningOnPort : null
+  };
+};

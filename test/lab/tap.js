@@ -8,9 +8,13 @@ exports.current = tap.current.bind(tap);
 /* A helper for running a single top-level test function
  * that returns a promise */
 exports.run = function(testFn) {
-  testFn().then(
-    function() { tap.current().end(); },
-    function(err) { tap.current().threw(err); });
+  Promise.resolve()
+    // wrap testFn in a promise to convert thrown errors into rejections
+    .then(function() { return testFn(); })
+    .then(
+      function() { tap.current().end(); },
+      function(err) { tap.current().threw(err);
+ });
 };
 
 /* A helper combining run + Promise.using */
