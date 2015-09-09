@@ -50,6 +50,13 @@ l.runUsing(l.debugScript(SCRIPT_UNDER_TEST), function(client) {
       }
     );
 
+    // 'function () { [native code] }'
+    var logDescription = String(console.log);
+    // Workaround for a bug in V8 4.5
+    // toString result: "function bound bound ASSERT() { [native code] }"
+    // debugger result: "function bound () { [native code] }"
+    logDescription = logDescription.replace('bound bound ASSERT', 'bound ');
+
     testRefSetter(
       'console.log', // a function
       function(valueId) {
@@ -57,7 +64,7 @@ l.runUsing(l.debugScript(SCRIPT_UNDER_TEST), function(client) {
           type: 'function',
           objectId: valueId,
           className: 'Function',
-          description: String(console.log) // 'function () { [native code] }'
+          description: logDescription,
         };
       }
     );

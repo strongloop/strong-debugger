@@ -53,11 +53,18 @@ l.runUsing(l.debugScript(SCRIPT_UNDER_TEST), function(client) {
       description: 'InspectedClass'
     });
 
+    // 'function () { [native code] }'
+    var logDescription = String(console.log);
+    // Workaround for a bug in V8 4.5
+    // toString result: "function bound bound ASSERT() { [native code] }"
+    // debugger result: "function bound () { [native code] }"
+    logDescription = logDescription.replace('bound bound ASSERT', 'bound ');
+
     testSetter({
       type: 'function',
       objectId: s.ref('aFunctionId'),
       className: 'Function',
-      description: String(console.log) // 'function () { [native code] }'
+      description: logDescription,
     });
 
     // helpers (implementation details) below this line
