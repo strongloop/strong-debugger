@@ -19,10 +19,7 @@
     "pretest": "jscs . && jshint .",
     "test": "tap test/lab/*.test.js test/*.test.js"
   },
-  "license": {
-    "name": "StrongLoop",
-    "url": "https://github.com/strongloop/strong-debugger/blob/master/LICENSE"
-  },
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "bindings": "^1.2.1",
     "nan": "^2.0.5"
