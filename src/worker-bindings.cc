@@ -61,7 +61,24 @@ void SetFunctionTemplate(Isolate* isolate,
 
 
 const char* Worker::InitIsolate() {
+#if NODE_MAJOR_VERSION > 0
+  static struct : public v8::ArrayBuffer::Allocator {
+    virtual void* Allocate(size_t length) {
+      return calloc(length, 1);
+    }
+    virtual void* AllocateUninitialized(size_t length) {
+      return malloc(length);
+    }
+    virtual void Free(void* data, size_t length) {
+      free(data);
+    }
+  } array_buffer_allocator;
+  Isolate::CreateParams params;
+  params.array_buffer_allocator = &array_buffer_allocator;
+  Isolate* isolate = Isolate::New(params);
+#else
   Isolate* isolate = Isolate::New();
+#endif
   Locker locker(isolate);
 #if NODE_VERSION_AT_LEAST(0, 11, 0)
   isolate->SetData(kDataSlot, this);
