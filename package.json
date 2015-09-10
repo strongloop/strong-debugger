@@ -1,6 +1,6 @@
 {
   "name": "strong-debugger",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "DevTools Remote Debugging Protocol provider for Node.js and io.js",
   "keywords": [
     "StrongLoop",
