@@ -19,7 +19,7 @@
     "pretest": "jscs . && jshint .",
     "test": "tap test/lab/*.test.js test/*.test.js"
   },
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "SEE LICENSE IN LICENSE.md",
   "dependencies": {
     "bindings": "^1.2.1",
     "nan": "^2.0.5"
