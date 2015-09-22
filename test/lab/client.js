@@ -60,7 +60,7 @@ function debugScript(scriptPath) {
       client.stdin = child.stdin;
     });
   }).disposer(function(client) {
-    client.close();
+    return client.close();
   });
 }
 
@@ -155,7 +155,8 @@ Client.prototype.receive = function(timeoutInMs) {
     self.once('error', onError);
   })
   .timeout(timeoutInMs,
-    'client.receive() timed out after ' + timeoutInMs + 'ms')
+    'client.receive() timed out after ' + timeoutInMs + 'ms from\n' +
+    new Error().stack)
   .finally(function() {
     self.removeListener('error', onError);
     self.removeListener('message', onMessage);
@@ -205,15 +206,31 @@ Client.prototype.undoReceive = function(msg) {
 
 Client.prototype.close = function() {
   var self = this;
-  return new Promise(function(resolve, reject) {
+  // Allow some time for the client to read
+  // any debugger messages waiting in the connection
+  return Promise.delay(100).then(function() {
+    // Close the debugger connection to ensure the process is not paused,
+    // otherwise the STOP command below is never handled
     self._conn.end();
-    // Allow some time for the client to read
-    // any debugger messages waiting in the connection
-    setTimeout(function() {
-      self._debugee.removeAllListeners();
-      self._debugee.once('exit', resolve);
-      self._debugee.kill();
-    }, 100);
+
+    // no-op when the child process is already gone
+    if (!self._debugee.connected) return;
+
+    // Stop the debugger backend and wait until the cleanup is done
+    // This is needed in order to get code-coverage data written to the disk
+    self._debugee.send({ cmd: 'STOP' });
+
+    return new Promise(function(resolve, reject) {
+      self._debugee.on('message', function(msg) {
+        if (msg.cmd === 'DEBUGGER_STOPPED') return resolve();
+      });
+    });
+  }).then(function() {
+    // Remove all listeners that would report a test failure due to the child
+    // process aborting via a signal (SIGTERM in this case)
+    self._debugee.removeAllListeners();
+    self._debugee.kill();
+    return Promise.waitForEvent(self._debugee, 'exit');
   });
 };
 

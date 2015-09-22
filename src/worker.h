@@ -37,7 +37,8 @@ class Controller;
 class Worker {
   public:
     Worker(Controller* controller,
-           const char* worker_script,
+           const char* script_root,
+           const char* code_coverage_report,
            bool debuglog_enabled);
 
     // API for Controller, may be called from another thread
@@ -125,6 +126,7 @@ class Worker {
     std::vector<ScriptDefinition> scripts_;
     void LoadScriptFile(const char* script_root, const char* filepath);
 
+    std::string code_coverage_report_;
     bool debuglog_enabled_;
 
     // V8 bindings
@@ -135,6 +137,8 @@ class Worker {
     static JS_METHOD(DisableDebugger);
     static JS_METHOD(SendDebuggerCommand);
     static JS_METHOD(Log);
+
+    void WriteCodeCoverageReport();
 };
 
 } // namespace debugger

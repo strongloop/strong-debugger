@@ -14,6 +14,7 @@ using v8::Handle;
 using v8::Local;
 using v8::Locker;
 using v8::Message;
+using v8::Object;
 using v8::ObjectTemplate;
 using v8::Script;
 using v8::String;
@@ -152,6 +153,53 @@ const char* Worker::InitIsolate() {
   }
 
   return NULL;
+}
+
+void Worker::WriteCodeCoverageReport() {
+  Locker locker(isolate_);
+  Isolate::Scope isolate_scope(isolate_);
+  Nan::HandleScope scope;
+
+#if NODE_VERSION_AT_LEAST(0, 11, 0)
+  Local<Context> context = Local<Context>::New(isolate_, context_);
+  Context::Scope context_scope(context);
+#else
+  Handle<Context> context = context_;
+  Context::Scope context_scope(context_);
+#endif
+
+  Local<Object> global(context->Global());
+  Local<Value> key = Nan::New("__coverage__").ToLocalChecked();
+  Local<Value> coverage = Nan::Get(global, key).ToLocalChecked();
+
+  // Call JSON.stringify
+  key = Nan::New("JSON").ToLocalChecked();
+  Local<Object> json = Nan::Get(global, key)
+                          .ToLocalChecked()
+                          .As<Object>();
+  key = Nan::New("stringify").ToLocalChecked();
+  Local<Function> stringify = Nan::Get(json, key)
+                                .ToLocalChecked()
+                                .As<Function>();
+
+  Local<String> coverage_string = stringify->Call(json, 1, &coverage)
+                                    .As<String>();
+  Nan::Utf8String content(coverage_string);
+
+  const char* fname = code_coverage_report_.c_str();
+  if (debuglog_enabled_)
+    fprintf(stderr, " strong-debugger: WRITING COVERAGE DATA TO %s\n", fname);
+
+  FILE* out = fopen(fname, "w");
+  if (!out) {
+    fprintf(
+      stderr,
+      "strong-debugger warning: cannot open %s, discarding coverage data",
+      fname);
+  } else {
+    fputs(*content, out);
+    fclose(out);
+  }
 }
 
 void Worker::EmitScriptEvent(const char* event, const char* payload) {

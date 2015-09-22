@@ -19,10 +19,12 @@ static void PrintError(const char* error, UvError cause = UvOk) {
 
 Worker::Worker(Controller* controller,
                const char* script_root,
+               const char* code_coverage_report,
                bool debuglog_enabled)
   : controller_(controller), start_result_(NULL), server_port_(-1),
     running_(false),
     isolate_(NULL), event_loop_(NULL),
+    code_coverage_report_(code_coverage_report),
     debuglog_enabled_(debuglog_enabled) {
   CHECK(!!controller_);
 
@@ -123,6 +125,9 @@ void Worker::Cleanup() {
   stop_signal_.CloseIfInitialized();
   debugger_messages_.CloseIfInitialized();
   server_.CloseIfInitialized(NULL);
+
+  if (!code_coverage_report_.empty())
+    WriteCodeCoverageReport();
 
   if (isolate_) {
     isolate_->Dispose();

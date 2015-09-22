@@ -27,6 +27,7 @@ class Controller {
     Controller(Isolate* main_isolate,
                uv_loop_t* main_loop,
                const char* script_root,
+               const char* code_coverage_report,
                bool debuglog_enabled);
 
     static Controller* GetInstance(Isolate* isolate);
