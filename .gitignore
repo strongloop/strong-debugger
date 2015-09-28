@@ -17,3 +17,5 @@ checkstyle.xml
 *.tgz
 test/fixtures/generated-*.js
 backend.cov
+coverage/
+.nyc_output/
