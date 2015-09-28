@@ -71,6 +71,10 @@ NAN_METHOD(Start) {
   }
   Nan::Utf8String script_root(val);
 
+  key = Nan::New("codeCoverageReport").ToLocalChecked();
+  val = Nan::Get(options, key).ToLocalChecked();
+  Nan::Utf8String code_coverage_report(val);
+
   key = Nan::New("debuglogEnabled").ToLocalChecked();
   val = Nan::Get(options, key).ToLocalChecked();
   if (!val->IsBoolean()) {
@@ -88,6 +92,7 @@ NAN_METHOD(Start) {
     controller = new Controller(info.GetIsolate(),
                                 uv_default_loop(),
                                 *script_root,
+                                *code_coverage_report,
                                 debuglog_enabled);
   }
 

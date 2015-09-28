@@ -18,6 +18,7 @@
   "excludeFiles": [
     "node_modules/**",
     "coverage/**",
+    "backend.cov/**",
     "test/fixtures/generated-*.js"
   ]
 }

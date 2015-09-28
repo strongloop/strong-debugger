@@ -6,9 +6,17 @@ var SCRIPT_UNDER_TEST = l.fixture(function infiniteCounter() {
   /*jshint -W087 */
   console.log('press ENTER to start...');
   process.stdin.once('data', function() {
+    // This is tricky. We need a code that spends most of the time in JS land
+    // so that Debugger.pause stops in a JS frame, but at the same time
+    // we need to allow Node runtime to process messages from the test
+    // (e.g. to stop the process and dump code coverage data)
     var counter = 0;
-    while (true)
-      counter++;
+    runForSomeTime();
+    function runForSomeTime() {
+      do { counter++; } while (counter % 1000000);
+      // Take a break, let Node runtime to process other async events
+      setImmediate(runForSomeTime);
+    }
   });
 });
 

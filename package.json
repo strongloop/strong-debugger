@@ -16,8 +16,10 @@
   "gypfile": true,
   "scripts": {
     "install": "node-gyp rebuild",
-    "pretest": "jscs . && jshint .",
-    "test": "tap test/lab/*.test.js test/*.test.js"
+    "instrument": "istanbul instrument --output backend.cov --no-compact --preserve-comments backend",
+    "pretest": "jscs . && jshint . && npm run instrument",
+    "test": "tap test/lab/*.test.js test/*.test.js",
+    "coverage": "nyc tap test/lab/*.test.js test/*.test.js"
   },
   "license": "SEE LICENSE IN LICENSE.md",
   "dependencies": {
@@ -29,9 +31,11 @@
     "chai": "^2.3.0",
     "debug": "^2.2.0",
     "dirty-chai": "^1.2.1",
+    "istanbul": "~0.3.20",
     "jscs": "^2.1.1",
     "jshint": "^2.6.0",
     "newline-json": "^0.1.1",
+    "nyc": "^3.2.2",
     "split": "^1.0.0",
     "tap": "^1.2.0",
     "ws": "^0.8.0"

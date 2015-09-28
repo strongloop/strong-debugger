@@ -4,8 +4,16 @@ var bindings = require('bindings');
 var dbg = bindings('debugger');
 var debuglogEnabled = require('debug')('strong-debugger').enabled;
 
-var workerPath = require.resolve('./backend/context.js');
-var scriptRoot = path.dirname(workerPath) + path.sep;
+var GATHER_CODE_COVERAGE = process.env.NYC_CWD; // jscs:disable
+var COVERAGE_REPORT_INDEX = 0;
+var COVERAGE_REPORT_BASE = path.join(__dirname, '.nyc_output',
+                                     process.pid + '-backend-');
+
+var SCRIPT_ROOT = [
+  path.dirname(require.resolve('./backend/context.js')),
+  GATHER_CODE_COVERAGE ? '.cov' : '',
+  path.sep
+].join('');
 
 var startCallbacks = [];
 var stopCallbacks = [];
@@ -34,8 +42,10 @@ exports.start = function(port, cb) {
   try {
     dbg.start({
       port: port,
-      scriptRoot: scriptRoot,
-      debuglogEnabled: debuglogEnabled
+      scriptRoot: SCRIPT_ROOT,
+      debuglogEnabled: debuglogEnabled,
+      codeCoverageReport: GATHER_CODE_COVERAGE ?
+        COVERAGE_REPORT_BASE + COVERAGE_REPORT_INDEX++ + '.json' : undefined
     }, onStarted);
   } catch (err) {
     startCallbacks = [];
