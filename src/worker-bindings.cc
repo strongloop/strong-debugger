@@ -25,6 +25,20 @@ using v8::Value;
 static const uint32_t kDataSlot = 0;
 #endif
 
+#if NODE_VERSION_AT_LEAST(0, 11, 0)
+typedef Local<Context> LocalContext;
+LocalContext NewLocalContext(Isolate* isolate,
+                             Persistent<Context> const& persistentContext) {
+  return Local<Context>::New(isolate, persistentContext);
+}
+#else
+typedef Handle<Context> LocalContext;
+LocalContext NewLocalContext(Isolate* isolate,
+                             Persistent<Context> const& persistentContext) {
+  return persistentContext;
+}
+#endif
+
 void PrintErrorMessage(Handle<Message> msg) {
   fprintf(stderr,
           "%s:%d\n  %s\n%*s\n%s\n",
@@ -159,14 +173,8 @@ void Worker::WriteCodeCoverageReport() {
   Locker locker(isolate_);
   Isolate::Scope isolate_scope(isolate_);
   Nan::HandleScope scope;
-
-#if NODE_VERSION_AT_LEAST(0, 11, 0)
-  Local<Context> context = Local<Context>::New(isolate_, context_);
+  LocalContext context = NewLocalContext(isolate_, context_);
   Context::Scope context_scope(context);
-#else
-  Handle<Context> context = context_;
-  Context::Scope context_scope(context_);
-#endif
 
   Local<Object> global(context->Global());
   Local<Value> key = Nan::New("__coverage__").ToLocalChecked();
@@ -206,14 +214,8 @@ void Worker::EmitScriptEvent(const char* event, const char* payload) {
   Locker locker(isolate_);
   Isolate::Scope isolate_scope(isolate_);
   Nan::HandleScope scope;
-
-#if NODE_VERSION_AT_LEAST(0, 11, 0)
-  Local<Context> context = Local<Context>::New(isolate_, context_);
+  LocalContext context = NewLocalContext(isolate_, context_);
   Context::Scope context_scope(context);
-#else
-  Handle<Context> context = context_;
-  Context::Scope context_scope(context_);
-#endif
 
   Local<Value> bindings = context->Global()->Get(
                             Nan::New<String>("bindings").ToLocalChecked());
