@@ -24,7 +24,8 @@
   "license": "SEE LICENSE IN LICENSE.md",
   "dependencies": {
     "bindings": "^1.2.1",
-    "nan": "^2.0.5"
+    "nan": "^2.0.5",
+    "newline-json": "^0.1.1"
   },
   "devDependencies": {
     "bluebird": "^2.9.26",
@@ -34,7 +35,6 @@
     "istanbul": "~0.3.20",
     "jscs": "^2.1.1",
     "jshint": "^2.6.0",
-    "newline-json": "^0.1.1",
     "nyc": "^3.2.2",
     "split": "^1.0.0",
     "tap": "^1.2.0",

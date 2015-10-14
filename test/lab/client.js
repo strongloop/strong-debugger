@@ -1,14 +1,13 @@
 'use strict';
 var Promise = require('./promise');
-var net = require('net');
 var inherits = require('util').inherits;
 var fork = require('child_process').fork;
 var EventEmitter = require('events').EventEmitter;
-var newlineJson = require('newline-json');
 var debuglog = require('./debuglog');
 var Scenario = require('./scenario');
 var Split = require('split');
 var convert = require('./convert');
+var clientConnection = require('../../client');
 
 exports.debugScript = debugScript;
 
@@ -45,7 +44,7 @@ function debugScript(scriptPath) {
         reject(err);
       };
 
-      var client = new Client(net.connect(port), child)
+      var client = new Client(clientConnection.connect(port), child)
         .on('ready', onReady)
         .on('error', onError);
 
@@ -105,28 +104,22 @@ Client.prototype._setupClientConnection = function() {
   });
 
   self._conn.on('connect', function() {
+    console.log('connected');
     self._conn.on('end', function() {
       debuglog('DEBUGGER CONNECTION CLOSED');
     });
 
-    var reader = new (newlineJson.Parser)();
-    reader.on('error', function(err) {
-      debuglog('DBG ERR %s', err);
-      self.emit('error', err);
-    });
-    reader.on('data', function(data) {
+    self._conn.on('data', function(data) {
       debuglog('DBG MSG < %j', data);
       self.emit('message', data);
     });
-    self._conn.pipe(reader);
+    setTimeout(function() { console.log('read2'); self._conn.read(0); }, 1000);
 
-    var writer = new (newlineJson.Stringifier)();
     self.send = function(msg) {
       debuglog('DBG REQ > %j', msg);
-      writer.write(msg);
+      self._conn.write(msg);
       return Promise.resolve(this);
     };
-    writer.pipe(self._conn);
 
     self.emit('ready');
   });
